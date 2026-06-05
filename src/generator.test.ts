@@ -1,0 +1,179 @@
+// src/generator.test.ts — TDD for changelog generator
+import { test, expect, describe } from "bun:test";
+import { generateChangelog, type ChangelogOptions } from "./generator";
+import type { ConventionalCommit } from "./parser";
+
+function commit(
+  type: string,
+  subject: string,
+  sha = "abc1234",
+  scope: string | null = null,
+  breaking = false,
+): ConventionalCommit {
+  return { sha, type, scope, breaking, subject, body: "" };
+}
+
+describe("generateChangelog", () => {
+  describe("section headers", () => {
+    test("uses ## [Unreleased] header by default", () => {
+      const out = generateChangelog([commit("feat", "add something")]);
+      expect(out).toContain("## [Unreleased]");
+    });
+
+    test("uses versioned header when version is provided", () => {
+      const out = generateChangelog([commit("feat", "add something")], {
+        version: "1.2.3",
+        date: "2026-06-05",
+      });
+      expect(out).toContain("## [v1.2.3] — 2026-06-05");
+      expect(out).not.toContain("Unreleased");
+    });
+
+    test("uses version without date when date is omitted", () => {
+      const out = generateChangelog([commit("feat", "add something")], {
+        version: "1.0.0",
+      });
+      expect(out).toContain("## [v1.0.0]");
+      expect(out).not.toContain("Unreleased");
+    });
+  });
+
+  describe("type grouping", () => {
+    test("renders feat commits under ### Features", () => {
+      const out = generateChangelog([commit("feat", "add login")]);
+      expect(out).toContain("### Features");
+      expect(out).toContain("- add login");
+    });
+
+    test("renders fix commits under ### Bug Fixes", () => {
+      const out = generateChangelog([commit("fix", "correct typo")]);
+      expect(out).toContain("### Bug Fixes");
+      expect(out).toContain("- correct typo");
+    });
+
+    test("renders chore commits under ### Chores", () => {
+      const out = generateChangelog([commit("chore", "update deps")]);
+      expect(out).toContain("### Chores");
+      expect(out).toContain("- update deps");
+    });
+
+    test("renders docs commits under ### Documentation", () => {
+      const out = generateChangelog([commit("docs", "improve readme")]);
+      expect(out).toContain("### Documentation");
+      expect(out).toContain("- improve readme");
+    });
+
+    test("renders refactor commits under ### Refactoring", () => {
+      const out = generateChangelog([commit("refactor", "extract helper")]);
+      expect(out).toContain("### Refactoring");
+      expect(out).toContain("- extract helper");
+    });
+
+    test("renders test commits under ### Tests", () => {
+      const out = generateChangelog([commit("test", "add unit tests")]);
+      expect(out).toContain("### Tests");
+      expect(out).toContain("- add unit tests");
+    });
+
+    test("renders perf commits under ### Performance", () => {
+      const out = generateChangelog([commit("perf", "cache responses")]);
+      expect(out).toContain("### Performance");
+      expect(out).toContain("- cache responses");
+    });
+
+    test("renders unknown types under ### Other", () => {
+      const out = generateChangelog([commit("ci", "add workflow")]);
+      expect(out).toContain("### Other");
+      expect(out).toContain("- add workflow");
+    });
+  });
+
+  describe("skipping empty sections", () => {
+    test("skips sections with no commits", () => {
+      const out = generateChangelog([commit("feat", "add thing")]);
+      expect(out).not.toContain("### Bug Fixes");
+      expect(out).not.toContain("### Chores");
+      expect(out).not.toContain("### Documentation");
+    });
+
+    test("renders multiple sections when both present", () => {
+      const commits = [
+        commit("feat", "add animated GIF export", "abc0001"),
+        commit("fix", "fix cyclesRun count", "abc0002"),
+      ];
+      const out = generateChangelog(commits);
+      expect(out).toContain("### Features");
+      expect(out).toContain("- add animated GIF export");
+      expect(out).toContain("### Bug Fixes");
+      expect(out).toContain("- fix cyclesRun count");
+    });
+  });
+
+  describe("commit rendering", () => {
+    test("each commit appears as a bullet item", () => {
+      const out = generateChangelog([commit("feat", "add login")]);
+      expect(out).toMatch(/^- add login$/m);
+    });
+
+    test("multiple commits appear as separate bullets", () => {
+      const commits = [
+        commit("feat", "add login", "sha0001"),
+        commit("feat", "add signup", "sha0002"),
+      ];
+      const out = generateChangelog(commits);
+      expect(out).toMatch(/^- add login$/m);
+      expect(out).toMatch(/^- add signup$/m);
+    });
+
+    test("returns empty string for empty commits array", () => {
+      const out = generateChangelog([]);
+      expect(out).toBe("");
+    });
+  });
+
+  describe("section ordering", () => {
+    test("Features appear before Bug Fixes", () => {
+      const commits = [
+        commit("fix", "a fix", "sha001"),
+        commit("feat", "a feature", "sha002"),
+      ];
+      const out = generateChangelog(commits);
+      const featIdx = out.indexOf("### Features");
+      const fixIdx = out.indexOf("### Bug Fixes");
+      expect(featIdx).toBeLessThan(fixIdx);
+    });
+
+    test("Bug Fixes appear before Chores", () => {
+      const commits = [
+        commit("chore", "update deps", "sha001"),
+        commit("fix", "a fix", "sha002"),
+      ];
+      const out = generateChangelog(commits);
+      const fixIdx = out.indexOf("### Bug Fixes");
+      const choreIdx = out.indexOf("### Chores");
+      expect(fixIdx).toBeLessThan(choreIdx);
+    });
+  });
+
+  describe("full output format", () => {
+    test("matches expected markdown structure", () => {
+      const commits = [
+        commit("feat", "add animated GIF export", "abc0012"),
+        commit("feat", "parse git log into typed commits", "abc0003"),
+        commit("fix", "fix cyclesRun to count sessions not PRs", "abc0014"),
+      ];
+      const out = generateChangelog(commits);
+      const expected = [
+        "## [Unreleased]",
+        "",
+        "### Features",
+        "- add animated GIF export",
+        "- parse git log into typed commits",
+        "",
+        "### Bug Fixes",
+        "- fix cyclesRun to count sessions not PRs",
+      ].join("\n");
+      expect(out).toBe(expected);
+    });
+  });
+});
