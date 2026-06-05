@@ -4,10 +4,14 @@
 // Usage:
 //   bun src/cli.ts [repo-path] [--version v1.2.3]
 //
-// Runs `git log --oneline` on the given repo path (defaults to current dir),
-// parses the output as conventional commits, and prints a markdown changelog.
+// Runs `git log --pretty=format:"%H %s" --no-merges` on the given repo path
+// (defaults to current dir), parses the output as conventional commits,
+// prints the markdown changelog to stdout, and writes CHANGELOG.md to the
+// target repo directory.
 
 import { execSync } from "node:child_process";
+import { writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { parseLog } from "./parser";
 import { generateChangelog } from "./generator";
 
@@ -33,17 +37,16 @@ function today(): string {
 }
 
 const { repoPath, version } = parseArgs(Bun.argv);
+const resolvedPath = resolve(repoPath);
 
 let gitLog: string;
 try {
-  gitLog = execSync("git log --oneline", {
-    cwd: repoPath,
+  gitLog = execSync('git log --pretty=format:"%H %s" --no-merges', {
+    cwd: resolvedPath,
     encoding: "utf8",
   });
 } catch (err) {
-  console.error(
-    `error: could not run git log in '${repoPath}'`,
-  );
+  console.error(`error: could not run git log in '${resolvedPath}'`);
   process.exit(1);
 }
 
@@ -59,4 +62,9 @@ const changelog = generateChangelog(commits, {
   date: version ? today() : undefined,
 });
 
+// Print to stdout
 console.log(changelog);
+
+// Write CHANGELOG.md to the target repo
+const changelogPath = join(resolvedPath, "CHANGELOG.md");
+writeFileSync(changelogPath, changelog + "\n", "utf8");
