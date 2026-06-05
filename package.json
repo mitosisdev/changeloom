@@ -1,8 +1,12 @@
 {
   "name": "changeloom",
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "description": "Generate changelogs from conventional commits",
   "private": false,
   "type": "module",
+  "bin": {
+    "changeloom": "./src/cli.ts"
+  },
   "scripts": {
     "test": "bun test"
   }
