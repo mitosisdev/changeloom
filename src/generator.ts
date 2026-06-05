@@ -58,6 +58,12 @@ export function generateChangelog(
     groups.get(key)!.push(commit);
   }
 
+  // Format a single commit as a bullet: "- <subject> (<shortSha>)"
+  function bullet(c: ConventionalCommit): string {
+    const shortSha = c.sha.slice(0, 7);
+    return `- ${c.subject} (${shortSha})`;
+  }
+
   // Build sections in the canonical type order
   const sections: string[] = [];
 
@@ -65,7 +71,7 @@ export function generateChangelog(
   for (const [type, label] of TYPE_ORDER) {
     const group = groups.get(type);
     if (!group || group.length === 0) continue;
-    const bullets = group.map((c) => `- ${c.subject}`).join("\n");
+    const bullets = group.map(bullet).join("\n");
     sections.push(`### ${label}\n${bullets}`);
   }
 
@@ -77,7 +83,7 @@ export function generateChangelog(
     }
   }
   if (otherCommits.length > 0) {
-    const bullets = otherCommits.map((c) => `- ${c.subject}`).join("\n");
+    const bullets = otherCommits.map(bullet).join("\n");
     sections.push(`### Other\n${bullets}`);
   }
 

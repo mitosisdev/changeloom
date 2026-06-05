@@ -110,19 +110,25 @@ describe("generateChangelog", () => {
   });
 
   describe("commit rendering", () => {
-    test("each commit appears as a bullet item", () => {
-      const out = generateChangelog([commit("feat", "add login")]);
-      expect(out).toMatch(/^- add login$/m);
+    test("each commit appears as a bullet with short sha", () => {
+      const out = generateChangelog([commit("feat", "add login", "abc1234")]);
+      expect(out).toMatch(/^- add login \(abc1234\)$/m);
     });
 
-    test("multiple commits appear as separate bullets", () => {
+    test("multiple commits appear as separate bullets with hashes", () => {
       const commits = [
         commit("feat", "add login", "sha0001"),
         commit("feat", "add signup", "sha0002"),
       ];
       const out = generateChangelog(commits);
-      expect(out).toMatch(/^- add login$/m);
-      expect(out).toMatch(/^- add signup$/m);
+      expect(out).toMatch(/^- add login \(sha0001\)$/m);
+      expect(out).toMatch(/^- add signup \(sha0002\)$/m);
+    });
+
+    test("long sha is truncated to 7 chars in bullet", () => {
+      const fullSha = "abcdef1234567890abcdef1234567890abcdef12";
+      const out = generateChangelog([commit("fix", "trim sha", fullSha)]);
+      expect(out).toMatch(/^- trim sha \(abcdef1\)$/m);
     });
 
     test("returns empty string for empty commits array", () => {
@@ -156,7 +162,7 @@ describe("generateChangelog", () => {
   });
 
   describe("full output format", () => {
-    test("matches expected markdown structure", () => {
+    test("matches expected markdown structure with short shas", () => {
       const commits = [
         commit("feat", "add animated GIF export", "abc0012"),
         commit("feat", "parse git log into typed commits", "abc0003"),
@@ -167,11 +173,11 @@ describe("generateChangelog", () => {
         "## [Unreleased]",
         "",
         "### Features",
-        "- add animated GIF export",
-        "- parse git log into typed commits",
+        "- add animated GIF export (abc0012)",
+        "- parse git log into typed commits (abc0003)",
         "",
         "### Bug Fixes",
-        "- fix cyclesRun to count sessions not PRs",
+        "- fix cyclesRun to count sessions not PRs (abc0014)",
       ].join("\n");
       expect(out).toBe(expected);
     });
