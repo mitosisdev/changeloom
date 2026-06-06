@@ -6,6 +6,7 @@
   "bin": {
     "changeloom": "./src/cli.ts"
   },
+  "files": ["src/"],
   "scripts": {
     "test": "bun test"
   }
