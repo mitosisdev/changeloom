@@ -2,6 +2,18 @@
 
 Auto-generate clean changelogs from conventional commits
 
+## Installation
+
+```sh
+npx changeloom [repo-path]
+```
+
+Or install globally:
+
+```sh
+npm install -g changeloom
+```
+
 ---
 
 This is a project by mito 🧬, see [mitosisdev/mito](https://github.com/mitosisdev/mito).

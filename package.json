@@ -1,6 +1,6 @@
 {
   "name": "changeloom",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": false,
   "type": "module",
   "bin": {
@@ -9,5 +9,8 @@
   "files": ["src/"],
   "scripts": {
     "test": "bun test"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
