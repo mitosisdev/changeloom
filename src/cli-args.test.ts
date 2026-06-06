@@ -29,4 +29,22 @@ describe("parseArgs", () => {
       outFile: "out.md",
     });
   });
+
+  test("parses --since flag", () => {
+    const result = parseArgs(["bun", "cli.ts", "--since", "v1.0.0"]);
+    expect(result).toEqual({
+      repoPath: ".",
+      since: "v1.0.0",
+      outFile: undefined,
+    });
+  });
+
+  test("leaves since undefined when --since is absent", () => {
+    const result = parseArgs(["bun", "cli.ts"]);
+    expect(result).toEqual({
+      repoPath: ".",
+      since: undefined,
+      outFile: undefined,
+    });
+  });
 });
