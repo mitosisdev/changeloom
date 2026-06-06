@@ -2,11 +2,12 @@
 // src/cli.ts — changeloom CLI entrypoint
 //
 // Usage:
-//   bun src/cli.ts [repo-path] [--version v1.2.3] [--out <file>]
+//   bun src/cli.ts [repo-path] [--version v1.2.3] [--out <file>] [--since <ref>]
 //
 // Runs `git log --oneline` on the given repo path (defaults to current dir),
 // parses the output as conventional commits, and writes a markdown changelog.
 // Output goes to stdout, or to a file when --out is given.
+// When --since <ref> is given, only commits after that ref are included.
 
 import { execSync } from "node:child_process";
 import { parseLog } from "./parser";
@@ -14,11 +15,12 @@ import { generateChangelog } from "./generator";
 
 export function parseArgs(
   argv: string[],
-): { repoPath: string; version?: string; outFile?: string } {
+): { repoPath: string; version?: string; outFile?: string; since?: string } {
   const args = argv.slice(2); // strip "bun" and script path
   let repoPath = ".";
   let version: string | undefined;
   let outFile: string | undefined;
+  let since: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--version" && args[i + 1]) {
@@ -27,12 +29,15 @@ export function parseArgs(
     } else if (args[i] === "--out" && args[i + 1]) {
       outFile = args[i + 1];
       i++;
+    } else if (args[i] === "--since" && args[i + 1]) {
+      since = args[i + 1];
+      i++;
     } else if (!args[i].startsWith("--")) {
       repoPath = args[i];
     }
   }
 
-  return { repoPath, version, outFile };
+  return { repoPath, version, outFile, since };
 }
 
 function today(): string {
@@ -40,11 +45,14 @@ function today(): string {
 }
 
 async function main() {
-  const { repoPath, version, outFile } = parseArgs(Bun.argv);
+  const { repoPath, version, outFile, since } = parseArgs(Bun.argv);
 
   let gitLog: string;
   try {
-    gitLog = execSync("git log --oneline", {
+    const gitCmd = since
+      ? `git log --oneline ${since}..HEAD`
+      : "git log --oneline";
+    gitLog = execSync(gitCmd, {
       cwd: repoPath,
       encoding: "utf8",
     });
