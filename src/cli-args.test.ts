@@ -29,4 +29,48 @@ describe("parseArgs", () => {
       outFile: "out.md",
     });
   });
+
+  test("parses --scope flag", () => {
+    const result = parseArgs(["bun", "cli.ts", ".", "--scope", "api"]);
+    expect(result).toEqual({ repoPath: ".", scope: "api" });
+  });
+
+  test("leaves scope undefined when --scope is absent", () => {
+    const result = parseArgs(["bun", "cli.ts", "."]);
+    expect(result.scope).toBeUndefined();
+  });
+
+  test("parses --scope with --out together", () => {
+    const result = parseArgs([
+      "bun",
+      "cli.ts",
+      ".",
+      "--scope",
+      "auth",
+      "--out",
+      "auth-changelog.md",
+    ]);
+    expect(result).toEqual({
+      repoPath: ".",
+      scope: "auth",
+      outFile: "auth-changelog.md",
+    });
+  });
+
+  test("parses --scope with --version together", () => {
+    const result = parseArgs([
+      "bun",
+      "cli.ts",
+      ".",
+      "--scope",
+      "ui",
+      "--version",
+      "v2.0.0",
+    ]);
+    expect(result).toEqual({
+      repoPath: ".",
+      scope: "ui",
+      version: "2.0.0",
+    });
+  });
 });
