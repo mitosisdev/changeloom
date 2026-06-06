@@ -48,3 +48,41 @@ describe("parseArgs", () => {
     });
   });
 });
+
+describe("parseArgs --types", () => {
+  test("parses --types as comma-split array", () => {
+    const result = parseArgs(["bun", "cli.ts", "--types", "feat,fix"]);
+    expect(result.types).toEqual(["feat", "fix"]);
+  });
+
+  test("parses --types with a single type", () => {
+    const result = parseArgs(["bun", "cli.ts", "--types", "feat"]);
+    expect(result.types).toEqual(["feat"]);
+  });
+
+  test("trims whitespace around types", () => {
+    const result = parseArgs(["bun", "cli.ts", "--types", "feat, fix , chore"]);
+    expect(result.types).toEqual(["feat", "fix", "chore"]);
+  });
+
+  test("leaves types undefined when --types is absent", () => {
+    const result = parseArgs(["bun", "cli.ts"]);
+    expect(result.types).toBeUndefined();
+  });
+
+  test("parses --types alongside --since and --out", () => {
+    const result = parseArgs([
+      "bun",
+      "cli.ts",
+      "--types",
+      "feat,fix",
+      "--since",
+      "v1.0.0",
+      "--out",
+      "CHANGELOG.md",
+    ]);
+    expect(result.types).toEqual(["feat", "fix"]);
+    expect(result.since).toBe("v1.0.0");
+    expect(result.outFile).toBe("CHANGELOG.md");
+  });
+});
