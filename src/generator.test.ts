@@ -182,4 +182,59 @@ describe("generateChangelog", () => {
       expect(out).toBe(expected);
     });
   });
+
+  describe("scope rendering", () => {
+    test("scoped commit bullet includes scope prefix", () => {
+      const out = generateChangelog([
+        commit("feat", "add login", "abc1234", "auth"),
+      ]);
+      expect(out).toMatch(/^- \(auth\): add login \(abc1234\)$/m);
+    });
+
+    test("unscoped commit bullet omits scope prefix", () => {
+      const out = generateChangelog([
+        commit("feat", "add login", "abc1234", null),
+      ]);
+      expect(out).toMatch(/^- add login \(abc1234\)$/m);
+    });
+
+    test("breaking scoped commit includes scope in bullet", () => {
+      const out = generateChangelog([
+        commit("feat", "breaking change", "abc1234", "api", true),
+      ]);
+      expect(out).toMatch(/^- \(api\): breaking change \(abc1234\)$/m);
+    });
+
+    test("mixed scoped and unscoped commits in same section", () => {
+      const commits = [
+        commit("fix", "fix token refresh", "sha0001", "auth"),
+        commit("fix", "correct typo", "sha0002", null),
+      ];
+      const out = generateChangelog(commits);
+      expect(out).toMatch(/^- \(auth\): fix token refresh \(sha0001\)$/m);
+      expect(out).toMatch(/^- correct typo \(sha0002\)$/m);
+    });
+
+    test("full output format with scoped commits", () => {
+      const commits = [
+        commit("feat", "add login", "abc0001", "auth"),
+        commit("fix", "fix token refresh", "abc0002", "auth"),
+        commit("chore", "update deps", "abc0003", null),
+      ];
+      const out = generateChangelog(commits);
+      const expected = [
+        "## [Unreleased]",
+        "",
+        "### Features",
+        "- (auth): add login (abc0001)",
+        "",
+        "### Bug Fixes",
+        "- (auth): fix token refresh (abc0002)",
+        "",
+        "### Chores",
+        "- update deps (abc0003)",
+      ].join("\n");
+      expect(out).toBe(expected);
+    });
+  });
 });

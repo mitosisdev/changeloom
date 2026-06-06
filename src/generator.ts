@@ -58,10 +58,13 @@ export function generateChangelog(
     groups.get(key)!.push(commit);
   }
 
-  // Format a single commit as a bullet: "- <subject> (<shortSha>)"
+  // Format a single commit as a bullet.
+  // With scope:    "- (scope): <subject> (<shortSha>)"
+  // Without scope: "- <subject> (<shortSha>)"
   function bullet(c: ConventionalCommit): string {
     const shortSha = c.sha.slice(0, 7);
-    return `- ${c.subject} (${shortSha})`;
+    const prefix = c.scope ? `(${c.scope}): ` : "";
+    return `- ${prefix}${c.subject} (${shortSha})`;
   }
 
   // Build sections in the canonical type order
