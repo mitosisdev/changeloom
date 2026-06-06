@@ -238,3 +238,125 @@ describe("generateChangelog", () => {
     });
   });
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// JSON output tests
+// ──────────────────────────────────────────────────────────────────────────────
+import { generateChangelogJson, type ChangelogJson } from "./generator";
+
+describe("generateChangelogJson", () => {
+  describe("top-level shape", () => {
+    test("returns version null when no version provided", () => {
+      const out = generateChangelogJson([commit("feat", "add login")]);
+      expect(out.version).toBeNull();
+    });
+
+    test("returns version string when version provided", () => {
+      const out = generateChangelogJson([commit("feat", "add login")], {
+        version: "1.2.3",
+      });
+      expect(out.version).toBe("1.2.3");
+    });
+
+    test("returns date null when no date provided", () => {
+      const out = generateChangelogJson([commit("feat", "add login")]);
+      expect(out.date).toBeNull();
+    });
+
+    test("returns date string when date provided", () => {
+      const out = generateChangelogJson([commit("feat", "add login")], {
+        version: "1.0.0",
+        date: "2026-06-06",
+      });
+      expect(out.date).toBe("2026-06-06");
+    });
+
+    test("returns empty groups array for empty commits", () => {
+      const out = generateChangelogJson([]);
+      expect(out.groups).toEqual([]);
+    });
+  });
+
+  describe("groups structure", () => {
+    test("feat commits produce a Features group", () => {
+      const out = generateChangelogJson([commit("feat", "add login", "abc1234")]);
+      expect(out.groups).toHaveLength(1);
+      expect(out.groups[0].label).toBe("Features");
+      expect(out.groups[0].type).toBe("feat");
+    });
+
+    test("fix commits produce a Bug Fixes group", () => {
+      const out = generateChangelogJson([commit("fix", "fix typo", "abc1234")]);
+      expect(out.groups[0].label).toBe("Bug Fixes");
+      expect(out.groups[0].type).toBe("fix");
+    });
+
+    test("unknown types produce an Other group", () => {
+      const out = generateChangelogJson([commit("ci", "add workflow", "abc1234")]);
+      expect(out.groups[0].label).toBe("Other");
+      expect(out.groups[0].type).toBe("other");
+    });
+
+    test("entries have correct fields", () => {
+      const out = generateChangelogJson([
+        commit("feat", "add login", "abc1234", "auth", false),
+      ]);
+      const entry = out.groups[0].entries[0];
+      expect(entry.sha).toBe("abc1234");
+      expect(entry.subject).toBe("add login");
+      expect(entry.scope).toBe("auth");
+      expect(entry.breaking).toBe(false);
+    });
+
+    test("null scope passes through as null", () => {
+      const out = generateChangelogJson([commit("feat", "add login", "abc1234")]);
+      expect(out.groups[0].entries[0].scope).toBeNull();
+    });
+
+    test("multiple types produce multiple groups in canonical order", () => {
+      const commits = [
+        commit("fix", "fix bug", "sha001"),
+        commit("feat", "add thing", "sha002"),
+        commit("chore", "update deps", "sha003"),
+      ];
+      const out = generateChangelogJson(commits);
+      expect(out.groups.map((g) => g.type)).toEqual(["feat", "fix", "chore"]);
+    });
+
+    test("full JSON structure matches snapshot", () => {
+      const commits = [
+        commit("feat", "add login", "abc0001", "auth"),
+        commit("fix", "fix token refresh", "abc0002", "auth"),
+        commit("chore", "update deps", "abc0003", null),
+      ];
+      const out = generateChangelogJson(commits);
+      expect(out).toEqual<ChangelogJson>({
+        version: null,
+        date: null,
+        groups: [
+          {
+            type: "feat",
+            label: "Features",
+            entries: [
+              { sha: "abc0001", subject: "add login", scope: "auth", breaking: false },
+            ],
+          },
+          {
+            type: "fix",
+            label: "Bug Fixes",
+            entries: [
+              { sha: "abc0002", subject: "fix token refresh", scope: "auth", breaking: false },
+            ],
+          },
+          {
+            type: "chore",
+            label: "Chores",
+            entries: [
+              { sha: "abc0003", subject: "update deps", scope: null, breaking: false },
+            ],
+          },
+        ],
+      });
+    });
+  });
+});

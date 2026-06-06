@@ -29,4 +29,34 @@ describe("parseArgs", () => {
       outFile: "out.md",
     });
   });
+
+  test("parses --format json flag", () => {
+    const result = parseArgs(["bun", "cli.ts", "--format", "json"]);
+    expect(result.format).toBe("json");
+  });
+
+  test("leaves format undefined when --format is absent", () => {
+    const result = parseArgs(["bun", "cli.ts", "."]);
+    expect(result.format).toBeUndefined();
+  });
+
+  test("parses --format json alongside --version and --out", () => {
+    const result = parseArgs([
+      "bun",
+      "cli.ts",
+      ".",
+      "--format",
+      "json",
+      "--version",
+      "v2.0.0",
+      "--out",
+      "out.json",
+    ]);
+    expect(result).toEqual({
+      repoPath: ".",
+      format: "json",
+      version: "2.0.0",
+      outFile: "out.json",
+    });
+  });
 });
