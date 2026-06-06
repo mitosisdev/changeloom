@@ -1,6 +1,6 @@
 // src/generator.test.ts — TDD for changelog generator
 import { test, expect, describe } from "bun:test";
-import { generateChangelog, type ChangelogOptions } from "./generator";
+import { generateChangelog, generateChangelogJson, type ChangelogOptions } from "./generator";
 import type { ConventionalCommit } from "./parser";
 
 function commit(
@@ -235,6 +235,137 @@ describe("generateChangelog", () => {
         "- update deps (abc0003)",
       ].join("\n");
       expect(out).toBe(expected);
+    });
+  });
+});
+
+describe("generateChangelogJson", () => {
+  describe("basic structure", () => {
+    test("returns object with sections array", () => {
+      const out = generateChangelogJson([commit("feat", "add login", "abc1234", "auth")]);
+      expect(out).toHaveProperty("sections");
+      expect(Array.isArray(out.sections)).toBe(true);
+    });
+
+    test("returns empty sections for empty commits", () => {
+      const out = generateChangelogJson([]);
+      expect(out.sections).toEqual([]);
+    });
+
+    test("omits version and date by default", () => {
+      const out = generateChangelogJson([commit("feat", "add login")]);
+      expect(out).not.toHaveProperty("version");
+      expect(out).not.toHaveProperty("date");
+    });
+
+    test("includes version when provided", () => {
+      const out = generateChangelogJson([commit("feat", "add login")], { version: "1.2.3" });
+      expect(out.version).toBe("1.2.3");
+    });
+
+    test("includes date when provided", () => {
+      const out = generateChangelogJson([commit("feat", "add login")], { version: "1.2.3", date: "2026-06-06" });
+      expect(out.date).toBe("2026-06-06");
+    });
+  });
+
+  describe("sections shape", () => {
+    test("section has type, label, and commits fields", () => {
+      const out = generateChangelogJson([commit("feat", "add login", "abc1234")]);
+      const section = out.sections[0];
+      expect(section).toHaveProperty("type");
+      expect(section).toHaveProperty("label");
+      expect(section).toHaveProperty("commits");
+    });
+
+    test("feat commits grouped under Features section", () => {
+      const out = generateChangelogJson([commit("feat", "add login", "abc1234")]);
+      const featSection = out.sections.find((s: { type: string }) => s.type === "feat");
+      expect(featSection).toBeDefined();
+      expect(featSection!.label).toBe("Features");
+    });
+
+    test("fix commits grouped under Bug Fixes section", () => {
+      const out = generateChangelogJson([commit("fix", "correct typo", "abc1234")]);
+      const fixSection = out.sections.find((s: { type: string }) => s.type === "fix");
+      expect(fixSection).toBeDefined();
+      expect(fixSection!.label).toBe("Bug Fixes");
+    });
+
+    test("unknown types grouped under Other section", () => {
+      const out = generateChangelogJson([commit("ci", "add workflow", "abc1234")]);
+      const otherSection = out.sections.find((s: { type: string }) => s.type === "other");
+      expect(otherSection).toBeDefined();
+      expect(otherSection!.label).toBe("Other");
+    });
+  });
+
+  describe("commit entries", () => {
+    test("commit entry has sha, description fields", () => {
+      const out = generateChangelogJson([commit("feat", "add login", "abc1234")]);
+      const entry = out.sections[0].commits[0];
+      expect(entry).toHaveProperty("sha");
+      expect(entry).toHaveProperty("description");
+    });
+
+    test("sha is truncated to 7 chars", () => {
+      const fullSha = "abcdef1234567890abcdef1234567890abcdef12";
+      const out = generateChangelogJson([commit("feat", "add login", fullSha)]);
+      expect(out.sections[0].commits[0].sha).toBe("abcdef1");
+    });
+
+    test("description matches subject", () => {
+      const out = generateChangelogJson([commit("feat", "add login flow", "abc1234")]);
+      expect(out.sections[0].commits[0].description).toBe("add login flow");
+    });
+
+    test("scope is included when present", () => {
+      const out = generateChangelogJson([commit("feat", "add login", "abc1234", "auth")]);
+      expect(out.sections[0].commits[0].scope).toBe("auth");
+    });
+
+    test("scope is absent when not present", () => {
+      const out = generateChangelogJson([commit("feat", "add login", "abc1234", null)]);
+      expect(out.sections[0].commits[0]).not.toHaveProperty("scope");
+    });
+  });
+
+  describe("section ordering", () => {
+    test("feat section appears before fix section", () => {
+      const commits = [
+        commit("fix", "a fix", "sha001"),
+        commit("feat", "a feature", "sha002"),
+      ];
+      const out = generateChangelogJson(commits);
+      const featIdx = out.sections.findIndex((s: { type: string }) => s.type === "feat");
+      const fixIdx = out.sections.findIndex((s: { type: string }) => s.type === "fix");
+      expect(featIdx).toBeLessThan(fixIdx);
+    });
+  });
+
+  describe("full JSON structure", () => {
+    test("matches expected JSON shape with version and date", () => {
+      const commits = [
+        commit("feat", "add login flow", "abc1234", "auth"),
+        commit("fix", "correct typo", "def5678", null),
+      ];
+      const out = generateChangelogJson(commits, { version: "1.2.3", date: "2026-06-06" });
+      expect(out).toEqual({
+        version: "1.2.3",
+        date: "2026-06-06",
+        sections: [
+          {
+            type: "feat",
+            label: "Features",
+            commits: [{ sha: "abc1234", scope: "auth", description: "add login flow" }],
+          },
+          {
+            type: "fix",
+            label: "Bug Fixes",
+            commits: [{ sha: "def5678", description: "correct typo" }],
+          },
+        ],
+      });
     });
   });
 });

@@ -2,25 +2,27 @@
 // src/cli.ts — changeloom CLI entrypoint
 //
 // Usage:
-//   bun src/cli.ts [repo-path] [--version v1.2.3] [--out <file>] [--since <ref>]
+//   bun src/cli.ts [repo-path] [--version v1.2.3] [--out <file>] [--since <ref>] [--format json]
 //
 // Runs `git log --oneline` on the given repo path (defaults to current dir),
 // parses the output as conventional commits, and writes a markdown changelog.
 // Output goes to stdout, or to a file when --out is given.
 // When --since <ref> is given, only commits after that ref are included.
+// When --format json is given, outputs machine-readable JSON instead of Markdown.
 
 import { execSync } from "node:child_process";
 import { parseLog } from "./parser";
-import { generateChangelog } from "./generator";
+import { generateChangelog, generateChangelogJson } from "./generator";
 
 export function parseArgs(
   argv: string[],
-): { repoPath: string; version?: string; outFile?: string; since?: string } {
+): { repoPath: string; version?: string; outFile?: string; since?: string; format?: string } {
   const args = argv.slice(2); // strip "bun" and script path
   let repoPath = ".";
   let version: string | undefined;
   let outFile: string | undefined;
   let since: string | undefined;
+  let format: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--version" && args[i + 1]) {
@@ -32,12 +34,15 @@ export function parseArgs(
     } else if (args[i] === "--since" && args[i + 1]) {
       since = args[i + 1];
       i++;
+    } else if (args[i] === "--format" && args[i + 1]) {
+      format = args[i + 1];
+      i++;
     } else if (!args[i].startsWith("--")) {
       repoPath = args[i];
     }
   }
 
-  return { repoPath, version, outFile, since };
+  return { repoPath, version, outFile, since, format };
 }
 
 function today(): string {
@@ -45,7 +50,7 @@ function today(): string {
 }
 
 async function main() {
-  const { repoPath, version, outFile, since } = parseArgs(Bun.argv);
+  const { repoPath, version, outFile, since, format } = parseArgs(Bun.argv);
 
   let gitLog: string;
   try {
@@ -68,16 +73,30 @@ async function main() {
     process.exit(0);
   }
 
-  const changelog = generateChangelog(commits, {
-    version,
-    date: version ? today() : undefined,
-  });
-
-  if (outFile) {
-    await Bun.write(outFile, changelog + "\n");
-    console.error(`changelog written to ${outFile}`);
+  if (format === "json") {
+    const jsonData = generateChangelogJson(commits, {
+      version,
+      date: version ? today() : undefined,
+    });
+    const output = JSON.stringify(jsonData, null, 2);
+    if (outFile) {
+      await Bun.write(outFile, output + "\n");
+      console.error(`changelog written to ${outFile}`);
+    } else {
+      console.log(output);
+    }
   } else {
-    console.log(changelog);
+    const changelog = generateChangelog(commits, {
+      version,
+      date: version ? today() : undefined,
+    });
+
+    if (outFile) {
+      await Bun.write(outFile, changelog + "\n");
+      console.error(`changelog written to ${outFile}`);
+    } else {
+      console.log(changelog);
+    }
   }
 }
 

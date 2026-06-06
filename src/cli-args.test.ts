@@ -48,3 +48,26 @@ describe("parseArgs", () => {
     });
   });
 });
+
+  test("parses --format json flag", () => {
+    const result = parseArgs(["bun", "cli.ts", "--format", "json"]);
+    expect(result).toEqual({
+      repoPath: ".",
+      format: "json",
+      outFile: undefined,
+    });
+  });
+
+  test("leaves format undefined when --format is absent", () => {
+    const result = parseArgs(["bun", "cli.ts"]);
+    expect(result.format).toBeUndefined();
+  });
+
+  test("parses --format json combined with --out", () => {
+    const result = parseArgs(["bun", "cli.ts", "--format", "json", "--out", "changelog.json"]);
+    expect(result).toEqual({
+      repoPath: ".",
+      format: "json",
+      outFile: "changelog.json",
+    });
+  });
