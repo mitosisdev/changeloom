@@ -84,4 +84,33 @@ describe("parseArgs", () => {
       outFile: "out.md",
     });
   });
+
+  test("parses --format json", () => {
+    const result = parseArgs(["bun", "cli.ts", "--format", "json"]);
+    expect(result.format).toBe("json");
+  });
+
+  test("leaves format undefined when --format is absent", () => {
+    const result = parseArgs(["bun", "cli.ts", "."]);
+    expect(result.format).toBeUndefined();
+  });
+
+  test("parses --format markdown explicitly", () => {
+    const result = parseArgs(["bun", "cli.ts", "--format", "markdown"]);
+    expect(result.format).toBe("markdown");
+  });
+
+  test("parses --format json alongside other flags", () => {
+    const result = parseArgs([
+      "bun",
+      "cli.ts",
+      ".",
+      "--version",
+      "v2.0.0",
+      "--format",
+      "json",
+    ]);
+    expect(result.format).toBe("json");
+    expect(result.version).toBe("2.0.0");
+  });
 });
