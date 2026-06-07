@@ -130,4 +130,21 @@ describe("parseArgs", () => {
       outFile: undefined,
     });
   });
+
+  test("parses --publish flag", () => {
+    const result = parseArgs(["bun", "cli.ts", ".", "--publish"]);
+    expect(result.publish).toBe(true);
+  });
+
+  test("publish defaults to undefined when --publish is absent", () => {
+    const result = parseArgs(["bun", "cli.ts", "."]);
+    expect(result.publish).toBeUndefined();
+  });
+
+  test("parses --publish combined with --out and --version", () => {
+    const result = parseArgs(["bun", "cli.ts", ".", "--publish", "--version", "2.0.0", "--out", "out.html"]);
+    expect(result.publish).toBe(true);
+    expect(result.version).toBe("2.0.0");
+    expect(result.outFile).toBe("out.html");
+  });
 });

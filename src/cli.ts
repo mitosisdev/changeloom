@@ -16,12 +16,13 @@ import { execSync } from "node:child_process";
 import { parseLog } from "./parser";
 import { generateChangelog } from "./generator";
 import { generateChangelogJson } from "./json-formatter";
+import { generateChangelogHtml } from "./publisher";
 import { filterByScope } from "./scope-filter";
 import { filterByTypes } from "./type-filter";
 
 export function parseArgs(
   argv: string[],
-): { repoPath: string; version?: string; outFile?: string; since?: string; scope?: string; types: string[]; format?: string } {
+): { repoPath: string; version?: string; outFile?: string; since?: string; scope?: string; types: string[]; format?: string; publish?: boolean } {
   const args = argv.slice(2); // strip "bun" and script path
   let repoPath = ".";
   let version: string | undefined;
@@ -30,6 +31,7 @@ export function parseArgs(
   let scope: string | undefined;
   let types: string[] = [];
   let format: string | undefined;
+  let publish: boolean | undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--version" && args[i + 1]) {
@@ -50,12 +52,14 @@ export function parseArgs(
     } else if (args[i] === "--format" && args[i + 1]) {
       format = args[i + 1];
       i++;
+    } else if (args[i] === "--publish") {
+      publish = true;
     } else if (!args[i].startsWith("--")) {
       repoPath = args[i];
     }
   }
 
-  return { repoPath, version, outFile, since, scope, types, format };
+  return { repoPath, version, outFile, since, scope, types, format, publish };
 }
 
 function today(): string {
@@ -63,7 +67,7 @@ function today(): string {
 }
 
 async function main() {
-  const { repoPath, version, outFile, since, scope, types, format } = parseArgs(Bun.argv);
+  const { repoPath, version, outFile, since, scope, types, format, publish } = parseArgs(Bun.argv);
 
   let gitLog: string;
   try {
@@ -88,7 +92,15 @@ async function main() {
     process.exit(0);
   }
 
-  if (format === "json") {
+  if (publish) {
+    const htmlContent = generateChangelogHtml(filtered, {
+      version,
+      date: version ? today() : undefined,
+    });
+    const dest = outFile ?? "changelog.html";
+    await Bun.write(dest, htmlContent + "\n");
+    console.error(`changelog written to ${dest}`);
+  } else if (format === "json") {
     const jsonData = generateChangelogJson(filtered, {
       version,
       date: version ? today() : undefined,
