@@ -2,7 +2,7 @@
 // src/cli.ts — changeloom CLI entrypoint
 //
 // Usage:
-//   bun src/cli.ts [repo-path] [--version v1.2.3] [--out <file>] [--since <ref>] [--scope <name>] [--types feat,fix]
+//   bun src/cli.ts [repo-path] [--version v1.2.3] [--out <file>] [--since <ref>] [--scope <name>] [--types feat,fix] [--publish]
 //
 // Runs `git log --oneline` on the given repo path (defaults to current dir),
 // parses the output as conventional commits, and writes a markdown changelog.
@@ -10,16 +10,18 @@
 // When --since <ref> is given, only commits after that ref are included.
 // When --scope <name> is given, only commits with that scope are included.
 // When --types feat,fix is given, only commits with those types are included.
+// When --publish is given, generates a self-contained changelog.html with dark styling.
 
 import { execSync } from "node:child_process";
 import { parseLog } from "./parser";
 import { generateChangelog } from "./generator";
+import { generateHtml } from "./publisher";
 import { filterByScope } from "./scope-filter";
 import { filterByTypes } from "./type-filter";
 
 export function parseArgs(
   argv: string[],
-): { repoPath: string; version?: string; outFile?: string; since?: string; scope?: string; types: string[] } {
+): { repoPath: string; version?: string; outFile?: string; since?: string; scope?: string; types: string[]; publish: boolean } {
   const args = argv.slice(2); // strip "bun" and script path
   let repoPath = ".";
   let version: string | undefined;
@@ -27,6 +29,7 @@ export function parseArgs(
   let since: string | undefined;
   let scope: string | undefined;
   let types: string[] = [];
+  let publish = false;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--version" && args[i + 1]) {
@@ -44,12 +47,14 @@ export function parseArgs(
     } else if (args[i] === "--types" && args[i + 1]) {
       types = args[i + 1].split(",").map((t) => t.trim()).filter(Boolean);
       i++;
+    } else if (args[i] === "--publish") {
+      publish = true;
     } else if (!args[i].startsWith("--")) {
       repoPath = args[i];
     }
   }
 
-  return { repoPath, version, outFile, since, scope, types };
+  return { repoPath, version, outFile, since, scope, types, publish };
 }
 
 function today(): string {
@@ -57,7 +62,7 @@ function today(): string {
 }
 
 async function main() {
-  const { repoPath, version, outFile, since, scope, types } = parseArgs(Bun.argv);
+  const { repoPath, version, outFile, since, scope, types, publish } = parseArgs(Bun.argv);
 
   let gitLog: string;
   try {
@@ -80,6 +85,15 @@ async function main() {
   if (filtered.length === 0) {
     console.error("No conventional commits found.");
     process.exit(0);
+  }
+
+  if (publish) {
+    // --publish mode: generate a self-contained changelog.html with dark styling
+    const html = generateHtml(filtered, { version });
+    const htmlFile = outFile ?? "changelog.html";
+    await Bun.write(htmlFile, html);
+    console.error(`changelog.html written to ${htmlFile}`);
+    return;
   }
 
   const changelog = generateChangelog(filtered, {

@@ -1,16 +1,16 @@
-// src/cli-args.test.ts — TDD for CLI argument parsing, including --out, --since, --scope, --types flags
+// src/cli-args.test.ts — TDD for CLI argument parsing, including --out, --since, --scope, --types, --publish flags
 import { test, expect, describe } from "bun:test";
 import { parseArgs } from "./cli";
 
 describe("parseArgs", () => {
   test("parses repo path and --out flag", () => {
     const result = parseArgs(["bun", "cli.ts", ".", "--out", "CHANGELOG.md"]);
-    expect(result).toEqual({ repoPath: ".", outFile: "CHANGELOG.md", scope: undefined, types: [] });
+    expect(result).toEqual({ repoPath: ".", outFile: "CHANGELOG.md", scope: undefined, types: [], publish: false });
   });
 
   test("leaves outFile undefined when --out is absent", () => {
     const result = parseArgs(["bun", "cli.ts", "."]);
-    expect(result).toEqual({ repoPath: ".", outFile: undefined, scope: undefined, types: [] });
+    expect(result).toEqual({ repoPath: ".", outFile: undefined, scope: undefined, types: [], publish: false });
   });
 
   test("parses --version and --out together", () => {
@@ -29,6 +29,7 @@ describe("parseArgs", () => {
       outFile: "out.md",
       scope: undefined,
       types: [],
+      publish: false,
     });
   });
 
@@ -40,6 +41,7 @@ describe("parseArgs", () => {
       outFile: undefined,
       scope: undefined,
       types: [],
+      publish: false,
     });
   });
 
@@ -51,6 +53,7 @@ describe("parseArgs", () => {
       outFile: undefined,
       scope: undefined,
       types: [],
+      publish: false,
     });
   });
 
@@ -61,6 +64,7 @@ describe("parseArgs", () => {
       outFile: undefined,
       scope: "auth",
       types: [],
+      publish: false,
     });
   });
 
@@ -87,6 +91,7 @@ describe("parseArgs", () => {
       scope: "api",
       outFile: "out.md",
       types: [],
+      publish: false,
     });
   });
 
@@ -128,6 +133,45 @@ describe("parseArgs", () => {
       scope: "auth",
       types: ["feat", "fix"],
       outFile: undefined,
+      publish: false,
     });
+  });
+
+  // --publish flag tests
+  test("parses --publish flag", () => {
+    const result = parseArgs(["bun", "cli.ts", ".", "--publish"]);
+    expect(result.publish).toBe(true);
+  });
+
+  test("publish defaults to false when --publish is absent", () => {
+    const result = parseArgs(["bun", "cli.ts", "."]);
+    expect(result.publish).toBe(false);
+  });
+
+  test("parses --publish combined with --version and --out", () => {
+    const result = parseArgs([
+      "bun",
+      "cli.ts",
+      ".",
+      "--version",
+      "v2.0.0",
+      "--publish",
+      "--out",
+      "custom.html",
+    ]);
+    expect(result).toEqual({
+      repoPath: ".",
+      version: "2.0.0",
+      outFile: "custom.html",
+      scope: undefined,
+      types: [],
+      publish: true,
+    });
+  });
+
+  test("parses --publish combined with --since", () => {
+    const result = parseArgs(["bun", "cli.ts", ".", "--since", "v1.0.0", "--publish"]);
+    expect(result.publish).toBe(true);
+    expect(result.since).toBe("v1.0.0");
   });
 });
