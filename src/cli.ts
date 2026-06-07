@@ -2,28 +2,31 @@
 // src/cli.ts — changeloom CLI entrypoint
 //
 // Usage:
-//   bun src/cli.ts [repo-path] [--version v1.2.3] [--out <file>] [--since <ref>] [--scope <name>]
+//   bun src/cli.ts [repo-path] [--version v1.2.3] [--out <file>] [--since <ref>] [--scope <name>] [--types feat,fix]
 //
 // Runs `git log --oneline` on the given repo path (defaults to current dir),
 // parses the output as conventional commits, and writes a markdown changelog.
 // Output goes to stdout, or to a file when --out is given.
 // When --since <ref> is given, only commits after that ref are included.
 // When --scope <name> is given, only commits with that scope are included.
+// When --types feat,fix is given, only commits with those types are included.
 
 import { execSync } from "node:child_process";
 import { parseLog } from "./parser";
 import { generateChangelog } from "./generator";
 import { filterByScope } from "./scope-filter";
+import { filterByTypes } from "./type-filter";
 
 export function parseArgs(
   argv: string[],
-): { repoPath: string; version?: string; outFile?: string; since?: string; scope?: string } {
+): { repoPath: string; version?: string; outFile?: string; since?: string; scope?: string; types: string[] } {
   const args = argv.slice(2); // strip "bun" and script path
   let repoPath = ".";
   let version: string | undefined;
   let outFile: string | undefined;
   let since: string | undefined;
   let scope: string | undefined;
+  let types: string[] = [];
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--version" && args[i + 1]) {
@@ -38,12 +41,15 @@ export function parseArgs(
     } else if (args[i] === "--scope" && args[i + 1]) {
       scope = args[i + 1];
       i++;
+    } else if (args[i] === "--types" && args[i + 1]) {
+      types = args[i + 1].split(",").map((t) => t.trim()).filter(Boolean);
+      i++;
     } else if (!args[i].startsWith("--")) {
       repoPath = args[i];
     }
   }
 
-  return { repoPath, version, outFile, since, scope };
+  return { repoPath, version, outFile, since, scope, types };
 }
 
 function today(): string {
@@ -51,7 +57,7 @@ function today(): string {
 }
 
 async function main() {
-  const { repoPath, version, outFile, since, scope } = parseArgs(Bun.argv);
+  const { repoPath, version, outFile, since, scope, types } = parseArgs(Bun.argv);
 
   let gitLog: string;
   try {
@@ -68,7 +74,8 @@ async function main() {
   }
 
   const commits = parseLog(gitLog);
-  const filtered = scope ? filterByScope(commits, scope) : commits;
+  const scopeFiltered = scope ? filterByScope(commits, scope) : commits;
+  const filtered = filterByTypes(scopeFiltered, types);
 
   if (filtered.length === 0) {
     console.error("No conventional commits found.");

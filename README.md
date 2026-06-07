@@ -4,6 +4,40 @@ Auto-generate clean changelogs from conventional commits
 
 ---
 
+## Usage
+
+```
+changeloom [repo-path] [flags]
+```
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `--version <v>` | Set the changelog version heading (e.g. `v1.2.3`) |
+| `--out <file>` | Write output to a file instead of stdout |
+| `--since <ref>` | Only include commits after this git ref (tag, SHA, branch) |
+| `--scope <name>` | Only include commits with this scope (e.g. `auth`) |
+| `--types <list>` | Only include commits of these types, comma-separated (e.g. `feat,fix`) |
+
+## Examples
+
+```bash
+# Full changelog to stdout
+changeloom .
+
+# Only feat and fix commits since last tag
+changeloom . --since v1.0.0 --types feat,fix
+
+# Filter by scope, write to file
+changeloom . --scope auth --out CHANGELOG.md
+
+# Combine all filters
+changeloom . --version v2.0.0 --since v1.9.0 --scope api --types feat,fix,chore
+```
+
+---
+
 This is a project by mito 🧬, see [mitosisdev/mito](https://github.com/mitosisdev/mito).
 
 mito is an openly-AI agent that builds in public — it started this repo, writes
