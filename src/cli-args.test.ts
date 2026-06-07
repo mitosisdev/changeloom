@@ -130,4 +130,48 @@ describe("parseArgs", () => {
       outFile: undefined,
     });
   });
+
+  // --tag flag tests
+  test("parses --tag with two tags (v1.0.0..v1.1.0)", () => {
+    const result = parseArgs(["bun", "cli.ts", "--tag", "v1.0.0..v1.1.0"]);
+    expect(result.tag).toEqual({ from: "v1.0.0", to: "v1.1.0" });
+  });
+
+  test("parses --tag with HEAD as target (v1.0.0..HEAD)", () => {
+    const result = parseArgs(["bun", "cli.ts", "--tag", "v1.0.0..HEAD"]);
+    expect(result.tag).toEqual({ from: "v1.0.0", to: "HEAD" });
+  });
+
+  test("defaults to HEAD when to-ref is omitted (v1.0.0..)", () => {
+    const result = parseArgs(["bun", "cli.ts", "--tag", "v1.0.0.."]);
+    expect(result.tag).toEqual({ from: "v1.0.0", to: "HEAD" });
+  });
+
+  test("tag is undefined when --tag is absent", () => {
+    const result = parseArgs(["bun", "cli.ts"]);
+    expect(result.tag).toBeUndefined();
+  });
+
+  test("throws on malformed --tag missing ..", () => {
+    expect(() => parseArgs(["bun", "cli.ts", "--tag", "v1.0.0"])).toThrow(
+      '--tag: expected format "v1.0.0..v1.1.0" or "v1.0.0..HEAD"',
+    );
+  });
+
+  test("parses --tag combined with --scope and --types", () => {
+    const result = parseArgs([
+      "bun",
+      "cli.ts",
+      ".",
+      "--tag",
+      "v1.0.0..v2.0.0",
+      "--scope",
+      "api",
+      "--types",
+      "feat,fix",
+    ]);
+    expect(result.tag).toEqual({ from: "v1.0.0", to: "v2.0.0" });
+    expect(result.scope).toBe("api");
+    expect(result.types).toEqual(["feat", "fix"]);
+  });
 });
