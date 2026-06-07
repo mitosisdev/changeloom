@@ -1,16 +1,16 @@
-// src/cli-args.test.ts — TDD for CLI argument parsing, including --out, --since, --scope flags
+// src/cli-args.test.ts — TDD for CLI argument parsing, including --out, --since, --scope, --publish flags
 import { test, expect, describe } from "bun:test";
 import { parseArgs } from "./cli";
 
 describe("parseArgs", () => {
   test("parses repo path and --out flag", () => {
     const result = parseArgs(["bun", "cli.ts", ".", "--out", "CHANGELOG.md"]);
-    expect(result).toEqual({ repoPath: ".", outFile: "CHANGELOG.md", scope: undefined });
+    expect(result).toEqual({ repoPath: ".", outFile: "CHANGELOG.md", scope: undefined, publish: false });
   });
 
   test("leaves outFile undefined when --out is absent", () => {
     const result = parseArgs(["bun", "cli.ts", "."]);
-    expect(result).toEqual({ repoPath: ".", outFile: undefined, scope: undefined });
+    expect(result).toEqual({ repoPath: ".", outFile: undefined, scope: undefined, publish: false });
   });
 
   test("parses --version and --out together", () => {
@@ -28,6 +28,7 @@ describe("parseArgs", () => {
       version: "1.0.0",
       outFile: "out.md",
       scope: undefined,
+      publish: false,
     });
   });
 
@@ -38,6 +39,7 @@ describe("parseArgs", () => {
       since: "v1.0.0",
       outFile: undefined,
       scope: undefined,
+      publish: false,
     });
   });
 
@@ -48,6 +50,7 @@ describe("parseArgs", () => {
       since: undefined,
       outFile: undefined,
       scope: undefined,
+      publish: false,
     });
   });
 
@@ -57,6 +60,7 @@ describe("parseArgs", () => {
       repoPath: ".",
       outFile: undefined,
       scope: "auth",
+      publish: false,
     });
   });
 
@@ -82,6 +86,23 @@ describe("parseArgs", () => {
       since: "v1.0.0",
       scope: "api",
       outFile: "out.md",
+      publish: false,
     });
+  });
+
+  test("parses --publish flag", () => {
+    const result = parseArgs(["bun", "cli.ts", ".", "--publish"]);
+    expect(result.publish).toBe(true);
+  });
+
+  test("publish defaults to false when --publish is absent", () => {
+    const result = parseArgs(["bun", "cli.ts", "."]);
+    expect(result.publish).toBe(false);
+  });
+
+  test("parses --publish combined with --version", () => {
+    const result = parseArgs(["bun", "cli.ts", ".", "--version", "1.2.3", "--publish"]);
+    expect(result.publish).toBe(true);
+    expect(result.version).toBe("1.2.3");
   });
 });
