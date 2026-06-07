@@ -5,12 +5,12 @@ import { parseArgs } from "./cli";
 describe("parseArgs", () => {
   test("parses repo path and --out flag", () => {
     const result = parseArgs(["bun", "cli.ts", ".", "--out", "CHANGELOG.md"]);
-    expect(result).toEqual({ repoPath: ".", outFile: "CHANGELOG.md", scope: undefined, types: [] });
+    expect(result).toEqual({ repoPath: ".", version: undefined, outFile: "CHANGELOG.md", since: undefined, scope: undefined, types: [], publish: false });
   });
 
   test("leaves outFile undefined when --out is absent", () => {
     const result = parseArgs(["bun", "cli.ts", "."]);
-    expect(result).toEqual({ repoPath: ".", outFile: undefined, scope: undefined, types: [] });
+    expect(result).toEqual({ repoPath: ".", version: undefined, outFile: undefined, since: undefined, scope: undefined, types: [], publish: false });
   });
 
   test("parses --version and --out together", () => {
@@ -27,8 +27,10 @@ describe("parseArgs", () => {
       repoPath: ".",
       version: "1.0.0",
       outFile: "out.md",
+      since: undefined,
       scope: undefined,
       types: [],
+      publish: false,
     });
   });
 
@@ -36,10 +38,12 @@ describe("parseArgs", () => {
     const result = parseArgs(["bun", "cli.ts", "--since", "v1.0.0"]);
     expect(result).toEqual({
       repoPath: ".",
+      version: undefined,
       since: "v1.0.0",
       outFile: undefined,
       scope: undefined,
       types: [],
+      publish: false,
     });
   });
 
@@ -47,10 +51,12 @@ describe("parseArgs", () => {
     const result = parseArgs(["bun", "cli.ts"]);
     expect(result).toEqual({
       repoPath: ".",
+      version: undefined,
       since: undefined,
       outFile: undefined,
       scope: undefined,
       types: [],
+      publish: false,
     });
   });
 
@@ -58,9 +64,12 @@ describe("parseArgs", () => {
     const result = parseArgs(["bun", "cli.ts", ".", "--scope", "auth"]);
     expect(result).toEqual({
       repoPath: ".",
+      version: undefined,
       outFile: undefined,
+      since: undefined,
       scope: "auth",
       types: [],
+      publish: false,
     });
   });
 
@@ -83,10 +92,12 @@ describe("parseArgs", () => {
     ]);
     expect(result).toEqual({
       repoPath: ".",
+      version: undefined,
       since: "v1.0.0",
       scope: "api",
       outFile: "out.md",
       types: [],
+      publish: false,
     });
   });
 
@@ -124,10 +135,12 @@ describe("parseArgs", () => {
     ]);
     expect(result).toEqual({
       repoPath: ".",
+      version: undefined,
       since: "v1.0.0",
       scope: "auth",
       types: ["feat", "fix"],
       outFile: undefined,
+      publish: false,
     });
   });
 });
