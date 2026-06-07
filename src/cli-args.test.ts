@@ -47,4 +47,24 @@ describe("parseArgs", () => {
       outFile: undefined,
     });
   });
+
+  test("parses --types with a single type", () => {
+    const result = parseArgs(["bun", "cli.ts", "--types", "feat"]);
+    expect(result.types).toEqual(["feat"]);
+  });
+
+  test("parses --types with multiple comma-separated types", () => {
+    const result = parseArgs(["bun", "cli.ts", "--types", "feat,fix,docs"]);
+    expect(result.types).toEqual(["feat", "fix", "docs"]);
+  });
+
+  test("trims whitespace from each type in --types", () => {
+    const result = parseArgs(["bun", "cli.ts", "--types", "feat, fix , docs"]);
+    expect(result.types).toEqual(["feat", "fix", "docs"]);
+  });
+
+  test("leaves types undefined when --types is absent", () => {
+    const result = parseArgs(["bun", "cli.ts", "."]);
+    expect(result.types).toBeUndefined();
+  });
 });
