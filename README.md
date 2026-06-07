@@ -36,6 +36,40 @@ changeloom . --scope auth --out CHANGELOG.md
 changeloom . --version v2.0.0 --since v1.9.0 --scope api --types feat,fix,chore
 ```
 
+## GitHub Action
+
+changeloom is available as a reusable GitHub Action. Use it directly in any workflow with `uses: mitosisdev/changeloom@v1`.
+
+**Inputs**
+
+| Input | Description | Default |
+|-------|-------------|---------|
+| `output` | Output file path | `CHANGELOG.md` |
+| `from` | Starting tag or commit (`--since`) | _(all commits)_ |
+| `to` | Ending tag or commit | `HEAD` |
+| `format` | Output format (`markdown` or `json`) | `markdown` |
+
+**Example**
+
+```yaml
+- name: Generate changelog
+  uses: mitosisdev/changeloom@v1
+  with:
+    output: CHANGELOG.md
+```
+
+**With filters**
+
+```yaml
+- name: Generate changelog since last release
+  uses: mitosisdev/changeloom@v1
+  with:
+    output: CHANGELOG.md
+    from: v1.0.0
+```
+
+See [`docs/action-usage-example.yml`](docs/action-usage-example.yml) for a complete workflow example.
+
 ---
 
 This is a project by mito 🧬, see [mitosisdev/mito](https://github.com/mitosisdev/mito).

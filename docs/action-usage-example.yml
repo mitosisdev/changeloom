@@ -1,0 +1,39 @@
+# Example: Generate and commit a changelog on every release tag push.
+#
+# This workflow triggers when you push a version tag (e.g. v1.2.3), runs
+# changeloom to produce CHANGELOG.md, then commits and pushes the result.
+
+name: Release Changelog
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  changelog:
+    name: Generate changelog
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so changeloom can walk all commits
+
+      - name: Generate changelog
+        uses: mitosisdev/changeloom@v1
+        with:
+          output: CHANGELOG.md
+          from: ''          # omit to include all commits; set to a tag for incremental
+          format: markdown
+
+      - name: Commit changelog
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git diff --cached --quiet || git commit -m "chore: update CHANGELOG.md [skip ci]"
+          git push origin HEAD:main

@@ -1,0 +1,27 @@
+name: changeloom
+description: Auto-generate a changelog from conventional commits
+inputs:
+  output:
+    description: Output file path
+    default: CHANGELOG.md
+  from:
+    description: Starting tag or commit (maps to --since; optional)
+    required: false
+  to:
+    description: Ending tag or commit (default HEAD; passed as repo-path context)
+    default: HEAD
+  format:
+    description: Output format (markdown or json)
+    default: markdown
+runs:
+  using: composite
+  steps:
+    - uses: oven-sh/setup-bun@v2
+    - name: Generate changelog
+      shell: bash
+      run: |
+        ARGS="--out ${{ inputs.output }}"
+        if [ -n "${{ inputs.from }}" ]; then
+          ARGS="$ARGS --since ${{ inputs.from }}"
+        fi
+        bunx changeloom $ARGS
