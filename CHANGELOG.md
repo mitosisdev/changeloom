@@ -25,6 +25,7 @@
 - expand publish.test.ts — HTML output, dark theme, file I/O, filter integration (#40) (38b6c57)
 
 ### Chores
+- update CHANGELOG.md [skip ci] (99f8668)
 - update CHANGELOG.md [skip ci] (149fc21)
 - update CHANGELOG.md [skip ci] (8fa1478)
 - update CHANGELOG.md [skip ci] (57d1235)
