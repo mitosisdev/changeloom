@@ -146,6 +146,59 @@ const INLINE_STYLES = `
     text-align: center;
   }
 
+  .filter-bar {
+    margin-bottom: 2rem;
+  }
+
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .filter-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .filter-label {
+    color: ${COLORS.textMuted};
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 0.25rem;
+  }
+
+  .filter-btn {
+    background-color: ${COLORS.surface};
+    border: 1px solid ${COLORS.border};
+    color: ${COLORS.text};
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 0.3rem 0.75rem;
+    border-radius: 2rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .filter-btn:hover {
+    border-color: ${COLORS.accent};
+    color: ${COLORS.accent};
+  }
+
+  .filter-btn.is-active {
+    background-color: ${COLORS.accent};
+    border-color: ${COLORS.accent};
+    color: ${COLORS.bg};
+  }
+
+  .commit-item.is-hidden,
+  .section.is-hidden {
+    display: none;
+  }
+
   footer {
     margin-top: 3rem;
     padding-top: 1rem;
@@ -169,15 +222,149 @@ function renderCommitItem(commit: ChangelogJsonCommit & { breaking?: boolean }):
   const sha = escapeHtml(commit.sha);
   const subject = escapeHtml(commit.subject);
   const scope = commit.scope ? escapeHtml(commit.scope) : null;
+  // data-scope lets the client-side scope filter target individual items.
+  const scopeAttr = scope ? ` data-scope="${scope}"` : "";
 
   return [
-    `      <li class="commit-item">`,
+    `      <li class="commit-item"${scopeAttr}>`,
     `        <span class="commit-bullet">•</span>`,
     scope ? `        <span class="commit-scope">(${scope}):</span>` : "",
     `        <span class="commit-subject">${subject}</span>`,
     `        <span class="commit-sha">${sha}</span>`,
     `      </li>`,
   ].filter(Boolean).join("\n");
+}
+
+/**
+ * Build the client-side filter bar (type + optional scope) and the vanilla JS
+ * that wires it up. Returns empty strings when there's nothing to filter.
+ *
+ * Type buttons are derived from the sections present (plus a "Breaking Changes"
+ * button when breaking commits exist, and an "All" reset). Scope buttons are
+ * derived from the distinct scopes across all commits, and the scope row is
+ * omitted entirely when no commit carries a scope.
+ */
+function buildFilterBar(
+  changelog: ChangelogJsonOutput,
+  hasBreaking: boolean,
+): { bar: string; script: string } {
+  const hasContent = changelog.sections.some((s) => s.commits.length > 0);
+  if (!hasContent) return { bar: "", script: "" };
+
+  // ── type buttons ──────────────────────────────────────────────────────────
+  // Breaking is rendered first so its label "Breaking Changes" precedes the
+  // regular type labels — keeping the breaking-before-features ordering intact.
+  const typeButtons: string[] = [
+    `        <button type="button" class="filter-btn is-active" data-filter-type="all">All</button>`,
+  ];
+  if (hasBreaking) {
+    typeButtons.push(
+      `        <button type="button" class="filter-btn" data-filter-type="breaking">Breaking Changes</button>`,
+    );
+  }
+  for (const section of changelog.sections) {
+    if (section.commits.length === 0) continue;
+    typeButtons.push(
+      `        <button type="button" class="filter-btn" data-filter-type="${escapeHtml(
+        section.type,
+      )}">${escapeHtml(section.label)}</button>`,
+    );
+  }
+
+  // ── scope buttons ─────────────────────────────────────────────────────────
+  const scopes: string[] = [];
+  const seen = new Set<string>();
+  for (const section of changelog.sections) {
+    for (const commit of section.commits) {
+      if (commit.scope && !seen.has(commit.scope)) {
+        seen.add(commit.scope);
+        scopes.push(commit.scope);
+      }
+    }
+  }
+
+  let scopeRow = "";
+  if (scopes.length > 0) {
+    const scopeButtons = [
+      `        <span class="filter-label">Scope</span>`,
+      `        <button type="button" class="filter-btn is-active" data-filter-scope="all">All scopes</button>`,
+      ...scopes.map(
+        (s) =>
+          `        <button type="button" class="filter-btn" data-filter-scope="${escapeHtml(
+            s,
+          )}">${escapeHtml(s)}</button>`,
+      ),
+    ];
+    scopeRow = `
+      <div class="filter-row">
+${scopeButtons.join("\n")}
+      </div>`;
+  }
+
+  const bar = `
+    <nav class="filter-bar" aria-label="Changelog filters">
+      <div class="filter-row">
+        <span class="filter-label">Type</span>
+${typeButtons.join("\n")}
+      </div>${scopeRow}
+    </nav>`;
+
+  // ── embedded vanilla JS ─────────────────────────────────────────────────────
+  // No external dependencies, no network calls — pure DOM manipulation.
+  // Two independent filters (type + scope) combine: a section is shown only if
+  // its type matches the active type AND it contains at least one visible commit
+  // under the active scope.
+  const script = `
+  <script>
+    (function () {
+      var typeFilter = "all";
+      var scopeFilter = "all";
+      var sections = Array.prototype.slice.call(document.querySelectorAll(".section"));
+
+      function apply() {
+        sections.forEach(function (section) {
+          var sectionType = section.getAttribute("data-type");
+          var typeMatch = typeFilter === "all" || sectionType === typeFilter;
+
+          var items = Array.prototype.slice.call(section.querySelectorAll(".commit-item"));
+          var visibleCount = 0;
+          items.forEach(function (item) {
+            var itemScope = item.getAttribute("data-scope");
+            var scopeMatch = scopeFilter === "all" || itemScope === scopeFilter;
+            if (scopeMatch) {
+              item.classList.remove("is-hidden");
+              visibleCount++;
+            } else {
+              item.classList.add("is-hidden");
+            }
+          });
+
+          if (typeMatch && visibleCount > 0) {
+            section.classList.remove("is-hidden");
+          } else {
+            section.classList.add("is-hidden");
+          }
+        });
+      }
+
+      function wire(attr, setter) {
+        var buttons = Array.prototype.slice.call(document.querySelectorAll("[" + attr + "]"));
+        buttons.forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            setter(btn.getAttribute(attr));
+            buttons.forEach(function (b) { b.classList.remove("is-active"); });
+            btn.classList.add("is-active");
+            apply();
+          });
+        });
+      }
+
+      wire("data-filter-type", function (v) { typeFilter = v; });
+${scopes.length > 0 ? `      wire("data-filter-scope", function (v) { scopeFilter = v; });\n` : ""}      apply();
+    })();
+  </script>`;
+
+  return { bar, script };
 }
 
 /**
@@ -211,7 +398,7 @@ export function buildChangelogHtml(
   if (breakingCommits.length > 0) {
     const items = breakingCommits.map(renderCommitItem).join("\n");
     breakingSection = `
-    <section class="section section--breaking">
+    <section class="section section--breaking" data-type="breaking">
       <h2 class="section-header">Breaking Changes</h2>
       <ul class="commit-list">
 ${items}
@@ -224,7 +411,7 @@ ${items}
     .map((section) => {
       const items = section.commits.map(renderCommitItem).join("\n");
       return `
-    <section class="section">
+    <section class="section" data-type="${escapeHtml(section.type)}">
       <h2 class="section-header">${escapeHtml(section.label)}</h2>
       <ul class="commit-list">
 ${items}
@@ -243,6 +430,12 @@ ${items}
     ? `${escapeHtml(projectName)} — Changelog`
     : "Changelog";
 
+  // Client-side filter bar (type + optional scope) and the JS that drives it.
+  const { bar: filterBar, script: filterScript } = buildFilterBar(
+    changelog,
+    breakingCommits.length > 0,
+  );
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -260,6 +453,7 @@ ${INLINE_STYLES}
       <span class="version-badge">${escapeHtml(versionDisplay)}</span>
     </header>
     <main>
+${filterBar}
 ${breakingSection}
 ${regularSections}
 ${emptyState}
@@ -268,6 +462,7 @@ ${emptyState}
       Generated by <strong>changeloom</strong>
     </footer>
   </div>
+${filterScript}
 </body>
 </html>`;
 }
