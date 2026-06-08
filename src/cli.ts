@@ -18,10 +18,11 @@ import { generateChangelog } from "./generator";
 import { generateChangelogJson } from "./json-formatter";
 import { filterByScope } from "./scope-filter";
 import { filterByTypes } from "./type-filter";
+import { buildTagRange } from "./tag-range";
 
 export function parseArgs(
   argv: string[],
-): { repoPath: string; version?: string; outFile?: string; since?: string; scope?: string; types: string[]; format?: string } {
+): { repoPath: string; version?: string; outFile?: string; since?: string; scope?: string; types: string[]; format?: string; from?: string; to?: string } {
   const args = argv.slice(2); // strip "bun" and script path
   let repoPath = ".";
   let version: string | undefined;
@@ -30,6 +31,8 @@ export function parseArgs(
   let scope: string | undefined;
   let types: string[] = [];
   let format: string | undefined;
+  let from: string | undefined;
+  let to: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--version" && args[i + 1]) {
@@ -50,12 +53,18 @@ export function parseArgs(
     } else if (args[i] === "--format" && args[i + 1]) {
       format = args[i + 1];
       i++;
+    } else if (args[i] === "--from" && args[i + 1]) {
+      from = args[i + 1];
+      i++;
+    } else if (args[i] === "--to" && args[i + 1]) {
+      to = args[i + 1];
+      i++;
     } else if (!args[i].startsWith("--")) {
       repoPath = args[i];
     }
   }
 
-  return { repoPath, version, outFile, since, scope, types, format };
+  return { repoPath, version, outFile, since, scope, types, format, from, to };
 }
 
 function today(): string {
@@ -63,11 +72,40 @@ function today(): string {
 }
 
 async function main() {
-  const { repoPath, version, outFile, since, scope, types, format } = parseArgs(Bun.argv);
+  const { repoPath, version, outFile, since, scope, types, format, from, to } = parseArgs(Bun.argv);
+
+  // Validate --from / --to tags exist in the repo before running git log
+  let range: string | undefined;
+  try {
+    range = buildTagRange(from, to);
+  } catch (err) {
+    console.error(`error: ${(err as Error).message}`);
+    process.exit(1);
+  }
+
+  if (from !== undefined) {
+    try {
+      execSync(`git rev-parse --verify "${from}"`, { cwd: repoPath, encoding: "utf8", stdio: "pipe" });
+    } catch {
+      console.error(`error: tag or ref '${from}' does not exist in the repository`);
+      process.exit(1);
+    }
+  }
+
+  if (to !== undefined) {
+    try {
+      execSync(`git rev-parse --verify "${to}"`, { cwd: repoPath, encoding: "utf8", stdio: "pipe" });
+    } catch {
+      console.error(`error: tag or ref '${to}' does not exist in the repository`);
+      process.exit(1);
+    }
+  }
 
   let gitLog: string;
   try {
-    const gitCmd = since
+    const gitCmd = range
+      ? `git log --oneline ${range}`
+      : since
       ? `git log --oneline ${since}..HEAD`
       : "git log --oneline";
     gitLog = execSync(gitCmd, {

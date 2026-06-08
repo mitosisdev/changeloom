@@ -130,4 +130,41 @@ describe("parseArgs", () => {
       outFile: undefined,
     });
   });
+
+  test("parses --from flag alone", () => {
+    const result = parseArgs(["bun", "cli.ts", "--from", "v1.0.0"]);
+    expect(result.from).toBe("v1.0.0");
+    expect(result.to).toBeUndefined();
+  });
+
+  test("parses --from and --to flags together", () => {
+    const result = parseArgs(["bun", "cli.ts", "--from", "v1.0.0", "--to", "v1.1.0"]);
+    expect(result.from).toBe("v1.0.0");
+    expect(result.to).toBe("v1.1.0");
+  });
+
+  test("leaves from and to undefined when neither flag is given", () => {
+    const result = parseArgs(["bun", "cli.ts"]);
+    expect(result.from).toBeUndefined();
+    expect(result.to).toBeUndefined();
+  });
+
+  test("parses --from combined with --scope and --types", () => {
+    const result = parseArgs([
+      "bun",
+      "cli.ts",
+      "--from",
+      "v1.0.0",
+      "--to",
+      "v1.1.0",
+      "--scope",
+      "auth",
+      "--types",
+      "feat,fix",
+    ]);
+    expect(result.from).toBe("v1.0.0");
+    expect(result.to).toBe("v1.1.0");
+    expect(result.scope).toBe("auth");
+    expect(result.types).toEqual(["feat", "fix"]);
+  });
 });
