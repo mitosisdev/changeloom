@@ -167,4 +167,14 @@ describe("parseArgs", () => {
     expect(result.scope).toBe("auth");
     expect(result.types).toEqual(["feat", "fix"]);
   });
+
+  test("parses --by-author flag as byAuthor: true", () => {
+    const result = parseArgs(["bun", "cli.ts", "--by-author"]);
+    expect(result.byAuthor).toBe(true);
+  });
+
+  test("byAuthor is undefined when --by-author is absent", () => {
+    const result = parseArgs(["bun", "cli.ts"]);
+    expect(result.byAuthor).toBeUndefined();
+  });
 });
