@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Features
+- resolvePublishPath — directory-aware --publish path handling (#42) (f528b20)
 - CI auto-generates CHANGELOG.md on every push to main (#43) (f17f059)
 - --publish mode — dark-themed self-contained HTML changelog (#39) (8cd8d39)
 - breaking-changes section — hoist BREAKING CHANGE commits to top (#38) (113519e)
@@ -23,5 +24,6 @@
 - expand publish.test.ts — HTML output, dark theme, file I/O, filter integration (#40) (38b6c57)
 
 ### Chores
+- update CHANGELOG.md [skip ci] (8fa1478)
 - update CHANGELOG.md [skip ci] (57d1235)
 - scaffold project (by mito) (2af19fc)
