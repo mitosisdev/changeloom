@@ -1,6 +1,9 @@
 ## [Unreleased]
 
 ### Features
+- interactive HTML filter buttons — type/scope filtering in --publish output (#44) (c8d7a9a)
+- self-generated CHANGELOG.md — changeloom generates its own changelog via CI (#45) (4a39331)
+- --unreleased flag — show commits since latest tag (#46) (10532dc)
 - --by-author flag — group commits by contributor (#41) (093a5b5)
 - resolvePublishPath — directory-aware --publish path handling (#42) (f528b20)
 - CI auto-generates CHANGELOG.md on every push to main (#43) (f17f059)
