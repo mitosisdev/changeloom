@@ -10,6 +10,7 @@ describe("parseCommit", () => {
       type: "feat",
       scope: null,
       breaking: false,
+      breakingDescription: null,
       subject: "add login",
       body: "",
     });
@@ -62,6 +63,52 @@ describe("parseCommit", () => {
     expect(result!.sha).toBe(sha);
     expect(result!.type).toBe("fix");
     expect(result!.subject).toBe("correct typo");
+  });
+});
+
+describe("BREAKING CHANGE footer detection", () => {
+  test("sets breaking=true when footer contains BREAKING CHANGE:", () => {
+    const result = parseCommit(
+      "abc1234 feat: add new api\n\nBREAKING CHANGE: removed old endpoint"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.breaking).toBe(true);
+  });
+
+  test("captures BREAKING CHANGE description from footer", () => {
+    const result = parseCommit(
+      "abc1234 feat: add new api\n\nBREAKING CHANGE: removed old endpoint"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.breakingDescription).toBe("removed old endpoint");
+  });
+
+  test("sets breaking=true for BREAKING CHANGE with body before footer", () => {
+    const result = parseCommit(
+      "abc1234 refactor: restructure auth\n\nThis is the body text.\n\nBREAKING CHANGE: auth config format changed"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.breaking).toBe(true);
+    expect(result!.breakingDescription).toBe("auth config format changed");
+  });
+
+  test("bang ! also sets breaking=true (existing, regression check)", () => {
+    const result = parseCommit("abc1234 feat!: new breaking thing");
+    expect(result).not.toBeNull();
+    expect(result!.breaking).toBe(true);
+  });
+
+  test("bang ! without footer sets breakingDescription to null", () => {
+    const result = parseCommit("abc1234 feat!: new breaking thing");
+    expect(result).not.toBeNull();
+    expect(result!.breakingDescription).toBeNull();
+  });
+
+  test("non-breaking commit has breakingDescription of null", () => {
+    const result = parseCommit("abc1234 feat: normal feature");
+    expect(result).not.toBeNull();
+    expect(result!.breaking).toBe(false);
+    expect(result!.breakingDescription).toBeNull();
   });
 });
 

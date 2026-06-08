@@ -9,8 +9,9 @@ function commit(
   sha = "abc1234",
   scope: string | null = null,
   breaking = false,
+  breakingDescription: string | null = null,
 ): ConventionalCommit {
-  return { sha, type, scope, breaking, subject, body: "" };
+  return { sha, type, scope, breaking, subject, body: "", breakingDescription };
 }
 
 describe("generateChangelog", () => {
@@ -180,6 +181,108 @@ describe("generateChangelog", () => {
         "- fix cyclesRun to count sessions not PRs (abc0014)",
       ].join("\n");
       expect(out).toBe(expected);
+    });
+  });
+
+  describe("breaking changes section", () => {
+    test("omits ## Breaking Changes section when no breaking commits exist", () => {
+      const out = generateChangelog([
+        commit("feat", "add login"),
+        commit("fix", "fix typo"),
+      ]);
+      expect(out).not.toContain("## Breaking Changes");
+    });
+
+    test("includes ## Breaking Changes section when bang-style breaking commit exists", () => {
+      const out = generateChangelog([
+        commit("feat", "remove old api", "abc1234", null, true, null),
+      ]);
+      expect(out).toContain("## Breaking Changes");
+    });
+
+    test("includes ## Breaking Changes section when BREAKING CHANGE footer present", () => {
+      const out = generateChangelog([
+        commit("feat", "add new api", "abc1234", null, true, "old endpoint removed"),
+      ]);
+      expect(out).toContain("## Breaking Changes");
+      expect(out).toContain("old endpoint removed");
+    });
+
+    test("## Breaking Changes section appears BEFORE ## [Unreleased] header sections", () => {
+      const out = generateChangelog([
+        commit("feat", "new api", "abc0001", null, true, "old api removed"),
+        commit("feat", "add login", "abc0002"),
+      ]);
+      const breakingIdx = out.indexOf("## Breaking Changes");
+      const featIdx = out.indexOf("### Features");
+      expect(breakingIdx).toBeGreaterThanOrEqual(0);
+      expect(featIdx).toBeGreaterThanOrEqual(0);
+      expect(breakingIdx).toBeLessThan(featIdx);
+    });
+
+    test("breaking commit with description renders description as bullet", () => {
+      const out = generateChangelog([
+        commit("feat", "new api", "abc0001", null, true, "old api removed"),
+      ]);
+      expect(out).toContain("- old api removed");
+    });
+
+    test("breaking commit without description renders subject as bullet in breaking section", () => {
+      const out = generateChangelog([
+        commit("feat", "remove old api", "abc0001", null, true, null),
+      ]);
+      expect(out).toContain("## Breaking Changes");
+      expect(out).toContain("- remove old api");
+    });
+
+    test("breaking commit still appears in its type section too", () => {
+      const out = generateChangelog([
+        commit("feat", "remove old api", "abc0001", null, true, null),
+      ]);
+      expect(out).toContain("## Breaking Changes");
+      expect(out).toContain("### Features");
+    });
+
+    test("exact output format with breaking change and regular commits", () => {
+      const commits = [
+        commit("feat", "new api", "abc0001", null, true, "old api removed"),
+        commit("feat", "add login", "abc0002"),
+        commit("fix", "fix typo", "abc0003"),
+      ];
+      const out = generateChangelog(commits);
+      const expected = [
+        "## [Unreleased]",
+        "",
+        "## Breaking Changes",
+        "- old api removed (abc0001)",
+        "",
+        "### Features",
+        "- new api (abc0001)",
+        "- add login (abc0002)",
+        "",
+        "### Bug Fixes",
+        "- fix typo (abc0003)",
+      ].join("\n");
+      expect(out).toBe(expected);
+    });
+
+    test("multiple breaking commits all listed in breaking section", () => {
+      const commits = [
+        commit("feat", "new api", "abc0001", null, true, "old api removed"),
+        commit("refactor", "restructure config", "abc0002", null, true, "config format changed"),
+      ];
+      const out = generateChangelog(commits);
+      expect(out).toContain("- old api removed");
+      expect(out).toContain("- config format changed");
+      const lines = out.split("\n");
+      const bIdx = lines.findIndex(l => l === "## Breaking Changes");
+      expect(bIdx).toBeGreaterThanOrEqual(0);
+      // both breaking bullets should appear before any type section
+      const firstSectionIdx = lines.findIndex(l => l.startsWith("### "));
+      const bullet1 = lines.findIndex(l => l.includes("old api removed"));
+      const bullet2 = lines.findIndex(l => l.includes("config format changed"));
+      expect(bullet1).toBeLessThan(firstSectionIdx);
+      expect(bullet2).toBeLessThan(firstSectionIdx);
     });
   });
 

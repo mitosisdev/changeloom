@@ -12,6 +12,8 @@ export interface ConventionalCommit {
   type: string;
   scope: string | null;
   breaking: boolean;
+  /** The description from a "BREAKING CHANGE: <description>" footer, or null if none. */
+  breakingDescription: string | null;
   subject: string;
   body: string;
 }
@@ -43,11 +45,24 @@ export function parseCommit(input: string): ConventionalCommit | null {
     body = lines.slice(blankIdx + 1).join("\n").trim();
   }
 
+  // Detect BREAKING CHANGE footer: a line starting with "BREAKING CHANGE: "
+  // in the body (after the blank separator). Per the conventional commits spec,
+  // this line may appear anywhere in the footer block.
+  let breakingDescription: string | null = null;
+  const BREAKING_FOOTER_RE = /^BREAKING CHANGE:\s+(.+)$/m;
+  const footerMatch = BREAKING_FOOTER_RE.exec(body);
+  if (footerMatch) {
+    breakingDescription = footerMatch[1].trim();
+  }
+
+  const isBreaking = bang === "!" || breakingDescription !== null;
+
   return {
     sha,
     type,
     scope: scope ?? null,
-    breaking: bang === "!",
+    breaking: isBreaking,
+    breakingDescription,
     subject: subject.trim(),
     body,
   };
