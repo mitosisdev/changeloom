@@ -79,6 +79,18 @@ export function parseArgs(
   return { repoPath, version, outFile, since, scope, types, format, from, to, publish };
 }
 
+/**
+ * Resolve the --publish path to a concrete file path.
+ * If the path ends with "/" (explicit directory), appends "changelog.html".
+ * Otherwise returns the path as-is (handles filenames like "changelog.html" or "out.html").
+ */
+export function resolvePublishPath(p: string): string {
+  if (p.endsWith("/")) {
+    return p + "changelog.html";
+  }
+  return p;
+}
+
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -145,8 +157,9 @@ async function main() {
       date: version ? today() : undefined,
     });
     const html = buildChangelogHtml(jsonData, {});
-    await Bun.write(publish, html);
-    console.error(`Wrote ${publish}`);
+    const publishPath = resolvePublishPath(publish);
+    await Bun.write(publishPath, html);
+    console.error(`Wrote ${publishPath}`);
   } else if (format === "json") {
     const jsonData = generateChangelogJson(filtered, {
       version,
