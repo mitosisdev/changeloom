@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Features
+- CI auto-generates CHANGELOG.md on every push to main (#43) (f17f059)
 - --publish mode — dark-themed self-contained HTML changelog (#39) (8cd8d39)
 - breaking-changes section — hoist BREAKING CHANGE commits to top (#38) (113519e)
 - --from/--to flags — filter changelog between git tags (#36) (8fdfed3)
