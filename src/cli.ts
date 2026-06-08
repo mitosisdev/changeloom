@@ -2,7 +2,7 @@
 // src/cli.ts — changeloom CLI entrypoint
 //
 // Usage:
-//   bun src/cli.ts [repo-path] [--version v1.2.3] [--out <file>] [--since <ref>] [--scope <name>] [--types feat,fix] [--format json]
+//   bun src/cli.ts [repo-path] [--version v1.2.3] [--out <file>] [--since <ref>] [--scope <name>] [--types feat,fix] [--format json] [--publish [path]]
 //
 // Runs `git log --oneline` on the given repo path (defaults to current dir),
 // parses the output as conventional commits, and writes a markdown changelog.
@@ -11,18 +11,20 @@
 // When --scope <name> is given, only commits with that scope are included.
 // When --types feat,fix is given, only commits with those types are included.
 // When --format json is given, outputs structured JSON instead of Markdown.
+// When --publish [path] is given, writes a dark-themed self-contained changelog.html.
 
 import { execSync } from "node:child_process";
 import { parseLog } from "./parser";
 import { generateChangelog } from "./generator";
 import { generateChangelogJson } from "./json-formatter";
+import { buildChangelogHtml } from "./html";
 import { filterByScope } from "./scope-filter";
 import { filterByTypes } from "./type-filter";
 import { buildTagRange } from "./tag-range";
 
 export function parseArgs(
   argv: string[],
-): { repoPath: string; version?: string; outFile?: string; since?: string; scope?: string; types: string[]; format?: string; from?: string; to?: string } {
+): { repoPath: string; version?: string; outFile?: string; since?: string; scope?: string; types: string[]; format?: string; from?: string; to?: string; publish?: string } {
   const args = argv.slice(2); // strip "bun" and script path
   let repoPath = ".";
   let version: string | undefined;
@@ -33,6 +35,7 @@ export function parseArgs(
   let format: string | undefined;
   let from: string | undefined;
   let to: string | undefined;
+  let publish: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--version" && args[i + 1]) {
@@ -59,12 +62,21 @@ export function parseArgs(
     } else if (args[i] === "--to" && args[i + 1]) {
       to = args[i + 1];
       i++;
+    } else if (args[i] === "--publish") {
+      // --publish accepts an optional path argument.
+      // If the next token is absent or starts with "--", default to "changelog.html".
+      if (args[i + 1] && !args[i + 1].startsWith("--")) {
+        publish = args[i + 1];
+        i++;
+      } else {
+        publish = "changelog.html";
+      }
     } else if (!args[i].startsWith("--")) {
       repoPath = args[i];
     }
   }
 
-  return { repoPath, version, outFile, since, scope, types, format, from, to };
+  return { repoPath, version, outFile, since, scope, types, format, from, to, publish };
 }
 
 function today(): string {
@@ -72,7 +84,7 @@ function today(): string {
 }
 
 async function main() {
-  const { repoPath, version, outFile, since, scope, types, format, from, to } = parseArgs(Bun.argv);
+  const { repoPath, version, outFile, since, scope, types, format, from, to, publish } = parseArgs(Bun.argv);
 
   // Validate --from / --to tags exist in the repo before running git log
   let range: string | undefined;
@@ -126,7 +138,16 @@ async function main() {
     process.exit(0);
   }
 
-  if (format === "json") {
+  if (publish !== undefined) {
+    // --publish mode: generate a self-contained dark-themed HTML file
+    const jsonData = generateChangelogJson(filtered, {
+      version,
+      date: version ? today() : undefined,
+    });
+    const html = buildChangelogHtml(jsonData, {});
+    await Bun.write(publish, html);
+    console.error(`Wrote ${publish}`);
+  } else if (format === "json") {
     const jsonData = generateChangelogJson(filtered, {
       version,
       date: version ? today() : undefined,
