@@ -287,3 +287,27 @@ describe("parseArgs --publish flag", () => {
     expect(result.scope).toBe("auth");
   });
 });
+
+// ── resolvePublishPath ────────────────────────────────────────────────────────
+
+describe("resolvePublishPath", () => {
+  test("plain filename is returned as-is", async () => {
+    const { resolvePublishPath } = await import("./cli");
+    expect(resolvePublishPath("changelog.html")).toBe("changelog.html");
+  });
+
+  test("path ending with / gets changelog.html appended", async () => {
+    const { resolvePublishPath } = await import("./cli");
+    expect(resolvePublishPath("dist/")).toBe("dist/changelog.html");
+  });
+
+  test("path ending with / (nested) gets changelog.html appended", async () => {
+    const { resolvePublishPath } = await import("./cli");
+    expect(resolvePublishPath("./output/reports/")).toBe("./output/reports/changelog.html");
+  });
+
+  test("path with .html extension is returned as-is", async () => {
+    const { resolvePublishPath } = await import("./cli");
+    expect(resolvePublishPath("out/my-log.html")).toBe("out/my-log.html");
+  });
+});
