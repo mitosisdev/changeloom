@@ -19,5 +19,9 @@
 - include short sha in changelog bullet lines (#6) (ad4cf4f)
 - changelog markdown generation from parsed commits (#5) (8ac136f)
 
+### Tests
+- expand publish.test.ts — HTML output, dark theme, file I/O, filter integration (#40) (38b6c57)
+
 ### Chores
+- update CHANGELOG.md [skip ci] (57d1235)
 - scaffold project (by mito) (2af19fc)
