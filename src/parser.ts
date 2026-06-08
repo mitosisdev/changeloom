@@ -16,6 +16,8 @@ export interface ConventionalCommit {
   breakingDescription: string | null;
   subject: string;
   body: string;
+  /** Author name and email, e.g. "Alice <alice@example.com>". Optional — set when git log includes author info. */
+  author?: string;
 }
 
 // Matches: <sha> <type>[(<scope>)][!]: <subject>
