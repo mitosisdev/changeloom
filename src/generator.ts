@@ -70,6 +70,17 @@ export function generateChangelog(
   // Build sections in the canonical type order
   const sections: string[] = [];
 
+  // Breaking changes section — hoisted to the top, before all type sections.
+  // Uses breakingDescription if present, otherwise falls back to subject.
+  const breakingCommits = commits.filter((c) => c.breaking);
+  if (breakingCommits.length > 0) {
+    const shortSha = (c: ConventionalCommit) => c.sha.slice(0, 7);
+    const breakingBullets = breakingCommits
+      .map((c) => `- ${c.breakingDescription ?? c.subject} (${shortSha(c)})`)
+      .join("\n");
+    sections.push(`## Breaking Changes\n${breakingBullets}`);
+  }
+
   // Known types in order
   for (const [type, label] of TYPE_ORDER) {
     const group = groups.get(type);
