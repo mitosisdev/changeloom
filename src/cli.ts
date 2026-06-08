@@ -3,6 +3,7 @@
 //
 // Usage:
 //   bun src/cli.ts [repo-path] [--version v1.2.3] [--out <file>] [--since <ref>] [--scope <name>] [--types feat,fix] [--format json] [--publish [path]] [--by-author]
+//   bun src/cli.ts [repo-path] [--unreleased]
 //
 // Runs `git log` on the given repo path (defaults to current dir),
 // parses the output as conventional commits, and writes a markdown changelog.
@@ -13,6 +14,9 @@
 // When --format json is given, outputs structured JSON instead of Markdown.
 // When --publish [path] is given, writes a dark-themed self-contained changelog.html.
 // When --by-author is given, appends a ## By Author section (Markdown only; no-op with --format json).
+// When --unreleased is given, auto-detects the latest git tag and shows only commits since it
+// (equivalent to --from <latest-tag>); falls back to all commits when the repo has no tags.
+// --from takes precedence if both are given.
 
 import { execSync } from "node:child_process";
 import { parseLog } from "./parser";
@@ -23,10 +27,11 @@ import { filterByScope } from "./scope-filter";
 import { filterByTypes } from "./type-filter";
 import { buildTagRange } from "./tag-range";
 import { generateByAuthor } from "./author-breakdown";
+import { detectLatestTag, resolveUnreleasedFrom } from "./latest-tag";
 
 export function parseArgs(
   argv: string[],
-): { repoPath: string; version?: string; outFile?: string; since?: string; scope?: string; types: string[]; format?: string; from?: string; to?: string; publish?: string; byAuthor?: boolean } {
+): { repoPath: string; version?: string; outFile?: string; since?: string; scope?: string; types: string[]; format?: string; from?: string; to?: string; publish?: string; byAuthor?: boolean; unreleased?: boolean } {
   const args = argv.slice(2); // strip "bun" and script path
   let repoPath = ".";
   let version: string | undefined;
@@ -39,6 +44,7 @@ export function parseArgs(
   let to: string | undefined;
   let publish: string | undefined;
   let byAuthor: boolean | undefined;
+  let unreleased: boolean | undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--version" && args[i + 1]) {
@@ -76,12 +82,14 @@ export function parseArgs(
       }
     } else if (args[i] === "--by-author") {
       byAuthor = true;
+    } else if (args[i] === "--unreleased") {
+      unreleased = true;
     } else if (!args[i].startsWith("--")) {
       repoPath = args[i];
     }
   }
 
-  return { repoPath, version, outFile, since, scope, types, format, from, to, publish, byAuthor };
+  return { repoPath, version, outFile, since, scope, types, format, from, to, publish, byAuthor, unreleased };
 }
 
 /**
@@ -101,7 +109,15 @@ function today(): string {
 }
 
 async function main() {
-  const { repoPath, version, outFile, since, scope, types, format, from, to, publish, byAuthor } = parseArgs(Bun.argv);
+  const parsed = parseArgs(Bun.argv);
+  const { repoPath, version, outFile, since, scope, types, format, to, publish, byAuthor, unreleased } = parsed;
+  let { from } = parsed;
+
+  // --unreleased: auto-detect the latest tag and show commits since it.
+  // Explicit --from wins (mutually exclusive); no tags → fall back to all commits.
+  if (unreleased) {
+    from = resolveUnreleasedFrom(from, detectLatestTag(repoPath));
+  }
 
   // Validate --from / --to tags exist in the repo before running git log
   let range: string | undefined;

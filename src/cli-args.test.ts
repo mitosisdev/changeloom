@@ -177,4 +177,30 @@ describe("parseArgs", () => {
     const result = parseArgs(["bun", "cli.ts"]);
     expect(result.byAuthor).toBeUndefined();
   });
+
+  test("parses --unreleased flag as unreleased: true", () => {
+    const result = parseArgs(["bun", "cli.ts", ".", "--unreleased"]);
+    expect(result.unreleased).toBe(true);
+  });
+
+  test("unreleased is undefined when --unreleased is absent", () => {
+    const result = parseArgs(["bun", "cli.ts", "."]);
+    expect(result.unreleased).toBeUndefined();
+  });
+
+  test("parses --unreleased combined with --scope and --types", () => {
+    const result = parseArgs([
+      "bun",
+      "cli.ts",
+      ".",
+      "--unreleased",
+      "--scope",
+      "auth",
+      "--types",
+      "feat,fix",
+    ]);
+    expect(result.unreleased).toBe(true);
+    expect(result.scope).toBe("auth");
+    expect(result.types).toEqual(["feat", "fix"]);
+  });
 });
