@@ -24,6 +24,19 @@ const COLORS = {
   scope: "#3fb950",
 } as const;
 
+// Per-commit-type bullet colors (spec: feat=blue, fix=red, chore=gray, etc.).
+// Exported so callers/tests can assert the palette. Unknown types fall back to
+// the default accent (handled by the base .commit-bullet rule).
+export const TYPE_COLORS = {
+  feat: "#58a6ff",     // blue
+  fix: "#f85149",      // red
+  docs: "#a371f7",     // purple
+  refactor: "#d29922", // amber
+  perf: "#3fb950",     // green
+  test: "#56d4dd",     // cyan
+  chore: "#8b949e",    // gray
+} as const;
+
 const INLINE_STYLES = `
   * {
     box-sizing: border-box;
@@ -119,6 +132,14 @@ const INLINE_STYLES = `
     flex-shrink: 0;
   }
 
+  .commit-item--feat .commit-bullet { color: ${TYPE_COLORS.feat}; }
+  .commit-item--fix .commit-bullet { color: ${TYPE_COLORS.fix}; }
+  .commit-item--docs .commit-bullet { color: ${TYPE_COLORS.docs}; }
+  .commit-item--refactor .commit-bullet { color: ${TYPE_COLORS.refactor}; }
+  .commit-item--perf .commit-bullet { color: ${TYPE_COLORS.perf}; }
+  .commit-item--test .commit-bullet { color: ${TYPE_COLORS.test}; }
+  .commit-item--chore .commit-bullet { color: ${TYPE_COLORS.chore}; }
+
   .commit-scope {
     color: ${COLORS.scope};
     font-size: 0.85rem;
@@ -165,13 +186,19 @@ function escapeHtml(str: string): string {
     .replace(/'/g, "&#039;");
 }
 
-function renderCommitItem(commit: ChangelogJsonCommit & { breaking?: boolean }): string {
+function renderCommitItem(
+  commit: ChangelogJsonCommit & { breaking?: boolean },
+  type?: string,
+): string {
   const sha = escapeHtml(commit.sha);
   const subject = escapeHtml(commit.subject);
   const scope = commit.scope ? escapeHtml(commit.scope) : null;
+  // Per-type modifier class drives the bullet color (see TYPE_COLORS / INLINE_STYLES).
+  // Unknown/undefined types get no modifier and fall back to the default accent bullet.
+  const typeClass = type ? ` commit-item--${escapeHtml(type)}` : "";
 
   return [
-    `      <li class="commit-item">`,
+    `      <li class="commit-item${typeClass}">`,
     `        <span class="commit-bullet">•</span>`,
     scope ? `        <span class="commit-scope">(${scope}):</span>` : "",
     `        <span class="commit-subject">${subject}</span>`,
@@ -195,13 +222,17 @@ export function buildChangelogHtml(
   const versionDisplay =
     changelog.version === "unreleased" ? "Unreleased" : changelog.version;
 
-  // Collect all breaking commits across all sections
-  const breakingCommits: (ChangelogJsonCommit & { breaking?: boolean })[] = [];
+  // Collect all breaking commits across all sections, preserving each commit's
+  // originating type so the hoisted breaking list keeps its per-type bullet color.
+  const breakingCommits: {
+    commit: ChangelogJsonCommit & { breaking?: boolean };
+    type: string;
+  }[] = [];
   for (const section of changelog.sections) {
     for (const commit of section.commits) {
       const c = commit as ChangelogJsonCommit & { breaking?: boolean };
       if (c.breaking) {
-        breakingCommits.push(c);
+        breakingCommits.push({ commit: c, type: section.type });
       }
     }
   }
@@ -209,7 +240,9 @@ export function buildChangelogHtml(
   // Build breaking changes section HTML (hoisted to top)
   let breakingSection = "";
   if (breakingCommits.length > 0) {
-    const items = breakingCommits.map(renderCommitItem).join("\n");
+    const items = breakingCommits
+      .map(({ commit, type }) => renderCommitItem(commit, type))
+      .join("\n");
     breakingSection = `
     <section class="section section--breaking">
       <h2 class="section-header">Breaking Changes</h2>
@@ -222,7 +255,9 @@ ${items}
   // Build regular sections HTML
   const regularSections = changelog.sections
     .map((section) => {
-      const items = section.commits.map(renderCommitItem).join("\n");
+      const items = section.commits
+        .map((c) => renderCommitItem(c, section.type))
+        .join("\n");
       return `
     <section class="section">
       <h2 class="section-header">${escapeHtml(section.label)}</h2>
