@@ -13,7 +13,9 @@
 // When --types feat,fix is given, only commits with those types are included.
 // When --format json is given, outputs structured JSON instead of Markdown.
 // When --publish [path] is given, writes a dark-themed self-contained changelog.html.
-// When --by-author is given, appends a ## By Author section (Markdown only; no-op with --format json).
+// When --by-author is given, appends a By Author section grouping commits by
+// contributor — a "## By Author" Markdown section, or a rendered section in
+// --publish HTML output. No-op with --format json (keeps JSON backward-compatible).
 // When --unreleased is given, auto-detects the latest git tag and shows only commits since it
 // (equivalent to --from <latest-tag>); falls back to all commits when the repo has no tags.
 // --from takes precedence if both are given.
@@ -209,10 +211,13 @@ async function main() {
   }
 
   if (publish !== undefined) {
-    // --publish mode: generate a self-contained dark-themed HTML file
+    // --publish mode: generate a self-contained dark-themed HTML file.
+    // When --by-author is set, the JSON carries an `authors` breakdown that the
+    // HTML renderer turns into a "By Author" section after the type sections.
     const jsonData = generateChangelogJson(filtered, {
       version,
       date: version ? today() : undefined,
+      byAuthor,
     });
     const html = buildChangelogHtml(jsonData, {});
     const publishPath = resolvePublishPath(publish);

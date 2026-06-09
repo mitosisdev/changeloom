@@ -199,6 +199,21 @@ const INLINE_STYLES = `
     display: none;
   }
 
+  .section--authors .author-group {
+    margin-bottom: 1.25rem;
+  }
+
+  .section--authors .author-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .author-name {
+    color: ${COLORS.accent};
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
   footer {
     margin-top: 3rem;
     padding-top: 1rem;
@@ -233,6 +248,51 @@ function renderCommitItem(commit: ChangelogJsonCommit & { breaking?: boolean }):
     `        <span class="commit-sha">${sha}</span>`,
     `      </li>`,
   ].filter(Boolean).join("\n");
+}
+
+/**
+ * Render the optional "By Author" section: all commits grouped by contributor.
+ * Each author becomes a sub-group; each commit renders as "<type>: <subject>"
+ * with its short sha. Returns "" when there are no author groups.
+ */
+function renderByAuthorSection(
+  authors: ChangelogJsonOutput["authors"],
+): string {
+  if (!authors || authors.length === 0) return "";
+
+  const groups = authors
+    .map((group) => {
+      const name = escapeHtml(group.author);
+      const items = group.commits
+        .map((c) => {
+          const sha = escapeHtml(c.sha);
+          const subject = escapeHtml(c.subject);
+          const typePrefix = c.type ? `${escapeHtml(c.type)}: ` : "";
+          return [
+            `        <li class="commit-item">`,
+            `          <span class="commit-bullet">•</span>`,
+            `          <span class="commit-subject">${typePrefix}${subject}</span>`,
+            `          <span class="commit-sha">${sha}</span>`,
+            `        </li>`,
+          ].join("\n");
+        })
+        .join("\n");
+      return [
+        `      <div class="author-group">`,
+        `        <h3 class="author-name">${name}</h3>`,
+        `        <ul class="commit-list">`,
+        items,
+        `        </ul>`,
+        `      </div>`,
+      ].join("\n");
+    })
+    .join("\n");
+
+  return `
+    <section class="section section--authors" data-type="authors">
+      <h2 class="section-header">By Author</h2>
+${groups}
+    </section>`;
 }
 
 /**
@@ -420,6 +480,9 @@ ${items}
     })
     .join("\n");
 
+  // Optional By Author section (rendered after the type-based sections).
+  const byAuthorSection = renderByAuthorSection(changelog.authors);
+
   // Empty state
   const hasContent = changelog.sections.some((s) => s.commits.length > 0);
   const emptyState = !hasContent
@@ -456,6 +519,7 @@ ${INLINE_STYLES}
 ${filterBar}
 ${breakingSection}
 ${regularSections}
+${byAuthorSection}
 ${emptyState}
     </main>
     <footer>

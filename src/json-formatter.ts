@@ -10,12 +10,20 @@ export interface ChangelogJsonOptions {
   version?: string;
   /** ISO date string (e.g. "2026-06-07") */
   date?: string;
+  /**
+   * When true, populate the `authors` breakdown on the output (commits grouped
+   * by contributor, authors sorted alphabetically). Off by default to keep the
+   * default JSON output backward-compatible.
+   */
+  byAuthor?: boolean;
 }
 
 export interface ChangelogJsonCommit {
   sha: string;
   subject: string;
   scope: string | null;
+  /** The commit type (feat, fix, …). Present on commits inside an author group. */
+  type?: string;
 }
 
 export interface ChangelogJsonSection {
@@ -24,10 +32,21 @@ export interface ChangelogJsonSection {
   commits: ChangelogJsonCommit[];
 }
 
+export interface ChangelogJsonAuthorGroup {
+  /** Author name and email, e.g. "Alice <alice@example.com>", or "Unknown". */
+  author: string;
+  commits: ChangelogJsonCommit[];
+}
+
 export interface ChangelogJsonOutput {
   version: string;
   date?: string;
   sections: ChangelogJsonSection[];
+  /**
+   * Per-contributor breakdown of all commits. Only present when the caller
+   * passes `byAuthor: true`. Authors are sorted alphabetically.
+   */
+  authors?: ChangelogJsonAuthorGroup[];
 }
 
 // Ordered list of known types with their display names (same order as markdown generator).
@@ -103,6 +122,28 @@ export function generateChangelogJson(
       label: "Other",
       commits: otherCommits.map(mapCommit),
     });
+  }
+
+  // Optional per-author breakdown. Groups ALL commits (regardless of type) by
+  // contributor, falling back to "Unknown" for commits with no author, and
+  // sorts authors alphabetically (case-insensitive) for stable output.
+  if (options.byAuthor) {
+    const authorGroups = new Map<string, ConventionalCommit[]>();
+    for (const commit of commits) {
+      const key = commit.author ?? "Unknown";
+      if (!authorGroups.has(key)) authorGroups.set(key, []);
+      authorGroups.get(key)!.push(commit);
+    }
+    const sortedAuthors = [...authorGroups.keys()].sort((a, b) =>
+      a.toLowerCase().localeCompare(b.toLowerCase()),
+    );
+    result.authors = sortedAuthors.map((author) => ({
+      author,
+      commits: authorGroups.get(author)!.map((c) => ({
+        ...mapCommit(c),
+        type: c.type,
+      })),
+    }));
   }
 
   return result;
