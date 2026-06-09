@@ -1,6 +1,6 @@
 {
   "name": "changeloom",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "private": false,
   "type": "module",
   "bin": {
