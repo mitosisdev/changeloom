@@ -9,6 +9,10 @@ describe("package.json publish shape", () => {
     expect(pkg.name).toBe("changeloom");
   });
 
+  test("version is 1.0.0", () => {
+    expect(pkg.version).toBe("1.0.0");
+  });
+
   test("not private", () => {
     expect(pkg.private).toBe(false);
   });
