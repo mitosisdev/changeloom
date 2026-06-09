@@ -24,10 +24,14 @@
 - include short sha in changelog bullet lines (#6) (ad4cf4f)
 - changelog markdown generation from parsed commits (#5) (8ac136f)
 
+### Bug Fixes
+- bump package.json version to 1.0.0 for npm publish (#48) (4e41363)
+
 ### Tests
 - expand publish.test.ts — HTML output, dark theme, file I/O, filter integration (#40) (38b6c57)
 
 ### Chores
+- update CHANGELOG.md [skip ci] (7448956)
 - update CHANGELOG.md [skip ci] (99f8668)
 - update CHANGELOG.md [skip ci] (149fc21)
 - update CHANGELOG.md [skip ci] (8fa1478)
