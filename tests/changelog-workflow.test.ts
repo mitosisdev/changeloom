@@ -9,7 +9,7 @@ import { describe, test, expect } from "bun:test";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 
-const workflowPath = join(import.meta.dir, "../.github/workflows/changelog.yml");
+const workflowPath = join(import.meta.dir, "../.github/workflows/generate-changelog.yml");
 
 describe("self-generated CHANGELOG workflow", () => {
   test("workflow file exists", () => {
@@ -45,7 +45,7 @@ describe("self-generated CHANGELOG workflow", () => {
   });
 
   test("runs changeloom against itself to generate CHANGELOG.md", () => {
-    expect(yml).toMatch(/bun (run )?src\/cli\.ts --out CHANGELOG\.md/);
+    expect(yml).toMatch(/bun (run )?src\/cli\.ts( \.)? --out CHANGELOG\.md/);
   });
 
   test("grants contents: write permission for pushing", () => {
